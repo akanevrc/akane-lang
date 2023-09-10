@@ -2,6 +2,8 @@
 name = "akaneclib"
 version = "0.1.0"
 edition = "2021"
+authors = ["akanevrc <akanezoranomukou@gmail.com>"]
+description = "Library for Akane language Compiler."
 
 [dependencies]
 anyhow = "1.0.75"
