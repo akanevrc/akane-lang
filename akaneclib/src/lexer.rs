@@ -226,7 +226,7 @@ fn is_equal(s: &str) -> bool {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     fn lex(input: &str) -> Vec<Token> {
