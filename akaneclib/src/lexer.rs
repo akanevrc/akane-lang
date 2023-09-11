@@ -4,7 +4,7 @@ use anyhow::{
     Error,
     Result,
 };
-use crate::token::*;
+use crate::data::*;
 
 pub fn lex(input: &str) -> Result<Vec<Token>, Vec<Error>> {
     let mut tokens = Vec::new();
