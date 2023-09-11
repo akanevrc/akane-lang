@@ -322,6 +322,8 @@ mod tests {
         assert_eq!(lex_to_tokens("|"), &[Token::OpCode("|".to_string())]);
         assert_eq!(lex_to_tokens("-"), &[Token::OpCode("-".to_string())]);
         assert_eq!(lex_to_tokens("~"), &[Token::OpCode("~".to_string())]);
+        assert_eq!(lex_to_tokens("!!"), &[Token::OpCode("!!".to_string())]);
+        assert_eq!(lex_to_tokens(">>="), &[Token::OpCode(">>=".to_string())]);
     }
 
     #[test]
