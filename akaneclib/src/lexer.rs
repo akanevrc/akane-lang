@@ -4,6 +4,7 @@ use anyhow::{
     Result,
 };
 use crate::data::*;
+use crate::bail_info;
 
 pub fn lex<'input>(input: &'input str) -> Result<Vec<TokenInfo<'input>>, Vec<Error>> {
     let mut tokens = Vec::new();
@@ -42,7 +43,8 @@ fn assume<'input>(chars: &mut Peekable<CharInfos<'input>>) -> Result<Option<Opti
         Ok(Some(Some(token)))
     }
     else {
-        Err(Error::msg("Invalid token found."))
+        let (info, c) = &chars.peek().unwrap();
+        bail_info!(info, "Invalid token found: `{}`", c);
     }
 }
 
@@ -258,6 +260,10 @@ mod tests {
         super::lex(input).unwrap().into_iter().map(|TokenInfo(_, info)| info).collect()
     }
 
+    fn lex_to_err_msgs(input: &str) -> Vec<String> {
+        super::lex(input).err().unwrap().into_iter().map(|e| e.to_string()).collect()
+    }
+
     #[test]
     fn test_lex_eof() {
         assert_eq!(lex_to_tokens(""), &[]);
@@ -352,6 +358,17 @@ mod tests {
             StrInfo::new(1, 6, &s[5..6], s),
             StrInfo::new(1, 8, &s[7..8], s),
             StrInfo::new(1, 9, &s[8..9], s),
+        ]);
+    }
+
+    #[test]
+    fn test_lex_failed() {
+        assert_eq!(lex_to_err_msgs("あ"), &[
+            "(1, 1): Invalid token found: `あ`",
+        ]);
+        assert_eq!(lex_to_err_msgs("abcあ\nい"), &[
+            "(1, 4): Invalid token found: `あ`",
+            "(2, 1): Invalid token found: `い`",
         ]);
     }
 }
