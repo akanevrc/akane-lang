@@ -12,12 +12,14 @@ pub fn lex<'input>(input: &'input str) -> Result<Vec<TokenInfo<'input>>, Vec<Err
     let mut chars = CharInfos::new(input).peekable();
     loop {
         match assume(&mut chars) {
-            Ok(Some(Some(token))) =>
+            Ok(Some(token @ TokenInfo(Token::Eof, _))) => {
+                tokens.push(token);
+                break;
+            },
+            Ok(Some(token)) =>
                 tokens.push(token),
-            Ok(Some(None)) =>
-                (),
             Ok(None) =>
-                break,
+                (),
             Err(e) => {
                 errs.push(e);
                 chars.next();
@@ -32,15 +34,15 @@ pub fn lex<'input>(input: &'input str) -> Result<Vec<TokenInfo<'input>>, Vec<Err
     }
 }
 
-fn assume<'input>(chars: &mut Peekable<CharInfos<'input>>) -> Result<Option<Option<TokenInfo<'input>>>> {
-    if let Some(_) = assume_eof(chars)? {
-        Ok(None)
+fn assume<'input>(chars: &mut Peekable<CharInfos<'input>>) -> Result<Option<TokenInfo<'input>>> {
+    if let Some(token) = assume_eof(chars)? {
+        Ok(Some(token))
     }
     else if let Some(_) = assume_whitespace(chars)? {
-        Ok(Some(None))
+        Ok(None)
     }
     else if let Some(token) = assume_token(chars)? {
-        Ok(Some(Some(token)))
+        Ok(Some(token))
     }
     else {
         let (info, c) = &chars.peek().unwrap();
@@ -48,9 +50,9 @@ fn assume<'input>(chars: &mut Peekable<CharInfos<'input>>) -> Result<Option<Opti
     }
 }
 
-fn assume_eof<'input>(chars: &mut Peekable<CharInfos<'input>>) -> Result<Option<()>> {
+fn assume_eof<'input>(chars: &mut Peekable<CharInfos<'input>>) -> Result<Option<TokenInfo<'input>>> {
     if let None = chars.peek() {
-        Ok(Some(()))
+        Ok(Some(TokenInfo(Token::Eof, StrInfo::eof())))
     }
     else {
         Ok(None)
@@ -266,76 +268,76 @@ mod tests {
 
     #[test]
     fn test_lex_eof() {
-        assert_eq!(lex_to_tokens(""), &[]);
+        assert_eq!(lex_to_tokens(""), &[Token::Eof]);
     }
 
     #[test]
     fn test_lex_whitespace() {
-        assert_eq!(lex_to_tokens(" \t\n\r"), &[]);
+        assert_eq!(lex_to_tokens(" \t\n\r"), &[Token::Eof]);
     }
 
     #[test]
     fn test_lex_semicolon() {
-        assert_eq!(lex_to_tokens(";"), &[Token::Semicolon]);
+        assert_eq!(lex_to_tokens(";"), &[Token::Semicolon, Token::Eof]);
     }
 
     #[test]
     fn test_lex_fn() {
-        assert_eq!(lex_to_tokens("fn"), &[Token::Fn]);
+        assert_eq!(lex_to_tokens("fn"), &[Token::Fn, Token::Eof]);
     }
 
     #[test]
     fn test_lex_ident() {
-        assert_eq!(lex_to_tokens("a"), &[Token::Ident("a".to_string())]);
-        assert_eq!(lex_to_tokens("a0"), &[Token::Ident("a0".to_string())]);
-        assert_eq!(lex_to_tokens("a_0"), &[Token::Ident("a_0".to_string())]);
-        assert_eq!(lex_to_tokens("a0_"), &[Token::Ident("a0_".to_string())]);
+        assert_eq!(lex_to_tokens("a"), &[Token::Ident("a".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("a0"), &[Token::Ident("a0".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("a_0"), &[Token::Ident("a_0".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("a0_"), &[Token::Ident("a0_".to_string()), Token::Eof]);
     }
 
     #[test]
     fn test_lex_num() {
-        assert_eq!(lex_to_tokens("0"), &[Token::Num("0".to_string())]);
-        assert_eq!(lex_to_tokens("1"), &[Token::Num("1".to_string())]);
-        assert_eq!(lex_to_tokens("2"), &[Token::Num("2".to_string())]);
-        assert_eq!(lex_to_tokens("3"), &[Token::Num("3".to_string())]);
-        assert_eq!(lex_to_tokens("4"), &[Token::Num("4".to_string())]);
-        assert_eq!(lex_to_tokens("5"), &[Token::Num("5".to_string())]);
-        assert_eq!(lex_to_tokens("6"), &[Token::Num("6".to_string())]);
-        assert_eq!(lex_to_tokens("7"), &[Token::Num("7".to_string())]);
-        assert_eq!(lex_to_tokens("8"), &[Token::Num("8".to_string())]);
-        assert_eq!(lex_to_tokens("9"), &[Token::Num("9".to_string())]);
-        assert_eq!(lex_to_tokens("0123456789"), &[Token::Num("0123456789".to_string())]);
+        assert_eq!(lex_to_tokens("0"), &[Token::Num("0".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("1"), &[Token::Num("1".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("2"), &[Token::Num("2".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("3"), &[Token::Num("3".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("4"), &[Token::Num("4".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("5"), &[Token::Num("5".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("6"), &[Token::Num("6".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("7"), &[Token::Num("7".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("8"), &[Token::Num("8".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("9"), &[Token::Num("9".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("0123456789"), &[Token::Num("0123456789".to_string()), Token::Eof]);
     }
 
     #[test]
     fn test_lex_op_code() {
-        assert_eq!(lex_to_tokens("!"), &[Token::OpCode("!".to_string())]);
-        assert_eq!(lex_to_tokens("#"), &[Token::OpCode("#".to_string())]);
-        assert_eq!(lex_to_tokens("$"), &[Token::OpCode("$".to_string())]);
-        assert_eq!(lex_to_tokens("%"), &[Token::OpCode("%".to_string())]);
-        assert_eq!(lex_to_tokens("&"), &[Token::OpCode("&".to_string())]);
-        assert_eq!(lex_to_tokens("*"), &[Token::OpCode("*".to_string())]);
-        assert_eq!(lex_to_tokens("+"), &[Token::OpCode("+".to_string())]);
-        assert_eq!(lex_to_tokens("."), &[Token::OpCode(".".to_string())]);
-        assert_eq!(lex_to_tokens("/"), &[Token::OpCode("/".to_string())]);
-        assert_eq!(lex_to_tokens("<"), &[Token::OpCode("<".to_string())]);
-        assert_eq!(lex_to_tokens("="), &[Token::Equal]);
-        assert_eq!(lex_to_tokens(">"), &[Token::OpCode(">".to_string())]);
-        assert_eq!(lex_to_tokens("?"), &[Token::OpCode("?".to_string())]);
-        assert_eq!(lex_to_tokens("@"), &[Token::OpCode("@".to_string())]);
-        assert_eq!(lex_to_tokens("\\"), &[Token::OpCode("\\".to_string())]);
-        assert_eq!(lex_to_tokens("^"), &[Token::OpCode("^".to_string())]);
-        assert_eq!(lex_to_tokens("|"), &[Token::OpCode("|".to_string())]);
-        assert_eq!(lex_to_tokens("-"), &[Token::OpCode("-".to_string())]);
-        assert_eq!(lex_to_tokens("~"), &[Token::OpCode("~".to_string())]);
-        assert_eq!(lex_to_tokens("!!"), &[Token::OpCode("!!".to_string())]);
-        assert_eq!(lex_to_tokens(">>="), &[Token::OpCode(">>=".to_string())]);
+        assert_eq!(lex_to_tokens("!"), &[Token::OpCode("!".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("#"), &[Token::OpCode("#".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("$"), &[Token::OpCode("$".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("%"), &[Token::OpCode("%".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("&"), &[Token::OpCode("&".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("*"), &[Token::OpCode("*".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("+"), &[Token::OpCode("+".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("."), &[Token::OpCode(".".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("/"), &[Token::OpCode("/".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("<"), &[Token::OpCode("<".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("="), &[Token::Equal, Token::Eof]);
+        assert_eq!(lex_to_tokens(">"), &[Token::OpCode(">".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("?"), &[Token::OpCode("?".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("@"), &[Token::OpCode("@".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("\\"), &[Token::OpCode("\\".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("^"), &[Token::OpCode("^".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("|"), &[Token::OpCode("|".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("-"), &[Token::OpCode("-".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("~"), &[Token::OpCode("~".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("!!"), &[Token::OpCode("!!".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens(">>="), &[Token::OpCode(">>=".to_string()), Token::Eof]);
     }
 
     #[test]
     fn test_lex_paren() {
-        assert_eq!(lex_to_tokens("("), &[Token::LParen]);
-        assert_eq!(lex_to_tokens(")"), &[Token::RParen]);
+        assert_eq!(lex_to_tokens("("), &[Token::LParen, Token::Eof]);
+        assert_eq!(lex_to_tokens(")"), &[Token::RParen, Token::Eof]);
     }
 
     #[test]
@@ -346,19 +348,21 @@ mod tests {
             Token::Equal,
             Token::Num("0".to_string()),
             Token::Semicolon,
+            Token::Eof,
         ]);
     }
 
     #[test]
     fn test_lex_returns_infos() {
         let s = "fn a = 0;";
-        assert_eq!(lex_to_infos("fn a = 0;"), &[
+        assert!(lex_to_infos("fn a = 0;").into_iter().zip(&[
             StrInfo::new(1, 1, &s[0..2], s),
             StrInfo::new(1, 4, &s[3..4], s),
             StrInfo::new(1, 6, &s[5..6], s),
             StrInfo::new(1, 8, &s[7..8], s),
             StrInfo::new(1, 9, &s[8..9], s),
-        ]);
+            StrInfo::eof(),
+        ]).all(|(actual, expected)| actual.strict_eq(expected)));
     }
 
     #[test]

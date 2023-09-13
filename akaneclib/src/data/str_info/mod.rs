@@ -15,11 +15,21 @@ pub struct StrInfo<'a> {
     pub line_slice: &'a str,
 }
 
+#[cfg(not(test))]
 impl<'a> PartialEq for StrInfo<'a> {
     fn eq(&self, other: &Self) -> bool {
-        self.line == other.line &&
-        self.column == other.column &&
-        self.slice == other.slice
+        self.strict_eq(other)
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
+    }
+}
+
+#[cfg(test)]
+impl<'a> PartialEq for StrInfo<'a> {
+    fn eq(&self, _other: &Self) -> bool {
+        true
     }
 
     fn ne(&self, other: &Self) -> bool {
@@ -28,11 +38,30 @@ impl<'a> PartialEq for StrInfo<'a> {
 }
 
 impl<'a> StrInfo<'a> {
+    pub fn eof() -> Self {
+        Self {
+            line: 0,
+            column: 0,
+            slice: "",
+            line_slice: "",
+        }
+    }
+
+    pub fn is_eof(&self) -> bool {
+        self.line == 0 && self.column == 0 && self.slice.is_empty()
+    }
+
     pub fn new(line: usize, column: usize, slice: &'a str, line_slice: &'a str) -> Self {
         Self { line, column, slice, line_slice }
     }
 
     pub fn extend(&self, tail: &Self) -> Self {
+        if self.is_eof() {
+            return tail.clone();
+        }
+        else if tail.is_eof() {
+            return self.clone();
+        }
         let head = self.slice.as_ptr() as usize;
         let last = tail.slice.as_ptr() as usize;
         let len = last - head + tail.slice.len();
@@ -47,7 +76,12 @@ impl<'a> StrInfo<'a> {
     }
 
     pub fn target_part_of_line(&self) -> String {
-        format!("{}\n{}", self.line_slice, self.underline())
+        if self.is_eof() {
+            String::new()
+        }
+        else {
+            format!("{}\n{}", self.line_slice, self.underline())
+        }
     }
 
     fn underline(&self) -> String {
@@ -66,6 +100,12 @@ impl<'a> StrInfo<'a> {
             };
         format!("{}{}", spaces, underline)
     }
+
+    pub fn strict_eq(&self, other: &Self) -> bool {
+        self.line == other.line &&
+        self.column == other.column &&
+        self.slice == other.slice
+    }
 }
 
 #[cfg(test)]
@@ -78,7 +118,16 @@ mod tests {
         let s1 = StrInfo::new(1, 1, &s[0..3], s);
         let s2 = StrInfo::new(1, 4, &s[3..6], s);
         let s3 = StrInfo::new(1, 1, &s[0..6], s);
-        assert_eq!(s1.extend(&s2), s3);
+        assert!(s1.extend(&s2).strict_eq(&s3));
+    }
+
+    #[test]
+    fn test_extend_with_eof() {
+        let s = "abcdefgh";
+        let s1 = StrInfo::new(1, 1, &s[0..3], s);
+        let s2 = StrInfo::eof();
+        assert!(s1.extend(&s2).strict_eq(&s1));
+        assert!(s2.extend(&s1).strict_eq(&s1));
     }
 
     #[test]
@@ -87,8 +136,10 @@ mod tests {
         let s1 = StrInfo::new(1, 1, &s[0..3], s);
         let s2 = StrInfo::new(1, 4, &s[3..6], s);
         let s3 = StrInfo::new(1, 1, &s[0..6], s);
+        let s4 = StrInfo::eof();
         assert_eq!(s1.target_part_of_line(), "abcdefgh\n^^^");
         assert_eq!(s2.target_part_of_line(), "abcdefgh\n   ^^^");
         assert_eq!(s3.target_part_of_line(), "abcdefgh\n^^^^^^");
+        assert_eq!(s4.target_part_of_line(), "");
     }
 }

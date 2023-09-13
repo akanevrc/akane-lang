@@ -8,6 +8,7 @@ pub struct TokenInfo<'input>(
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
+    Eof,
     Semicolon,
     Ident(String),
     Num(String),
