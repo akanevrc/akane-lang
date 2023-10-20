@@ -91,18 +91,124 @@ fn assume_top_def<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'
 }
 
 fn assume_fn_def<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<FnDefAst<'input>>> {
+    let mut ty_annot = None;
+    let mut ty_info = None;
+    if let Some(info) = assume_simple_token(tokens, Token::Ty)? {
+        ty_info = Some(info);
+        if let Some(ty_expr) = assume_ty_expr(tokens)? {
+            ty_annot = Some(ty_expr);
+        }
+    }
     if let Some(fn_info) = assume_simple_token(tokens, Token::Fn)? {
         if let Some(left_fn_def) = assume_left_fn_def(tokens)? {
             if let Some(_) = assume_simple_token(tokens, Token::Equal)? {
                 if let Some(expr) = assume_expr(tokens)? {
-                    let extended = fn_info.extend(&expr.str_info);
-                    return Ok(Some(fn_def_ast(left_fn_def, expr, extended)));
+                    let extended =
+                        if let Some(ty_info) = ty_info {
+                            ty_info.extend(&expr.str_info)
+                        }
+                        else {
+                            fn_info.extend(&expr.str_info)
+                        };
+                    return Ok(Some(fn_def_ast(ty_annot, left_fn_def, expr, extended)));
                 }
                 bail_tokens_with_line!(tokens, "Expression required:{}");
             }
             bail_tokens_with_line!(tokens, "`=` required:{}");
         }
         bail_tokens_with_line!(tokens, "Left function definition required:{}");
+    }
+    else {
+        Ok(None)
+    }
+}
+
+fn assume_ty_expr<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyExprAst<'input>>>> {
+    let mut exprs = Vec::new();
+    if let Some(lhs) = assume_ty_lhs(tokens)? {
+        exprs.push(lhs);
+        while let Some(rhs) = assume_ty_rhs(tokens)? {
+            exprs.push(rhs);
+        }
+        let mut expr_iter = exprs.into_iter().rev();
+        let mut rhs = expr_iter.next().unwrap();
+        for lhs in expr_iter {
+            let extended = lhs.str_info.extend(&rhs.str_info);
+            rhs = ty_arrow_expr_ast(ty_arrow_ast(lhs, rhs, extended.clone()), extended);
+        }
+        Ok(Some(rhs))
+    }
+    else {
+        Ok(None)
+    }
+}
+
+fn assume_ty_lhs<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyExprAst<'input>>>> {
+    if let Some(term) = assume_ty_term(tokens)? {
+        Ok(Some(term))
+    }
+    else {
+        Ok(None)
+    }
+}
+
+fn assume_ty_rhs<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyExprAst<'input>>>> {
+    if let Some(TokenInfo(Token::Arrow, _)) = tokens.peek() {
+        tokens.next();
+        if let Some(term) = assume_ty_term(tokens)? {
+            return Ok(Some(term));
+        }
+        bail_tokens_with_line!(tokens, "Type term required:{}");
+    }
+    else {
+        Ok(None)
+    }
+}
+
+fn assume_ty_term<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyExprAst<'input>>>> {
+    if let Some(factor) = assume_ty_factor(tokens)? {
+        Ok(Some(factor))
+    }
+    else {
+        Ok(None)
+    }
+}
+
+fn assume_ty_factor<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyExprAst<'input>>>> {
+    if let Some(expr) = assume_ty_paren(tokens)? {
+        Ok(Some(expr))
+    }
+    else if let Some(ident) = assume_ty_ident(tokens)? {
+        Ok(Some(ty_ident_expr_ast(ident.clone(), ident.str_info.clone())))
+    }
+    else {
+        Ok(None)
+    }
+}
+
+fn assume_ty_paren<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyExprAst<'input>>>>  {
+    if let Some(TokenInfo(Token::LParen, _)) = tokens.peek() {
+        tokens.next();
+        if let Some(expr) = assume_ty_expr(tokens)? {
+            if let Some(TokenInfo(Token::RParen, _)) = tokens.peek() {
+                tokens.next();
+                return Ok(Some(expr))
+            }
+            bail_tokens_with_line!(tokens, "`)` required:{}")
+        }
+        bail_tokens_with_line!(tokens, "Type expression required:{}")
+    }
+    else {
+        Ok(None)
+    }
+}
+
+fn assume_ty_ident<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<TyIdentAst<'input>>> {
+    if let Some(TokenInfo(Token::Ident(name), info)) = tokens.peek() {
+        let name = name.clone();
+        let info = info.clone();
+        tokens.next();
+        Ok(Some(ty_ident_ast(name, info)))
     }
     else {
         Ok(None)
@@ -324,8 +430,28 @@ mod tests {
         data::top_fn_def_ast(fn_def_ast)
     }
 
+    fn ty_fn_def_ast<'input>(ty_annot: Rc<TyExprAst<'input>>, left_fn_def: LeftFnDefAst<'input>, expr: Rc<ExprAst<'input>>) -> FnDefAst<'input> {
+        data::fn_def_ast(Some(ty_annot), left_fn_def, expr, dummy_info())
+    }
+
+    fn ty_arrow_expr_ast<'input>(ty_arrow: TyArrowAst<'input>) -> Rc<TyExprAst<'input>> {
+        data::ty_arrow_expr_ast(ty_arrow, dummy_info())
+    }
+
+    fn ty_ident_expr_ast<'input>(ty_ident: TyIdentAst<'input>) -> Rc<TyExprAst<'input>> {
+        data::ty_ident_expr_ast(ty_ident, dummy_info())
+    }
+
+    fn ty_arrow_ast<'input>(lhs: Rc<TyExprAst<'input>>, rhs: Rc<TyExprAst<'input>>) -> TyArrowAst<'input> {
+        data::ty_arrow_ast(lhs, rhs, dummy_info())
+    }
+
+    fn ty_ident_ast<'input>(name: &'input str) -> TyIdentAst<'input> {
+        data::ty_ident_ast(name.to_owned(), dummy_info())
+    }
+
     fn fn_def_ast<'input>(left_fn_def: LeftFnDefAst<'input>, expr: Rc<ExprAst<'input>>) -> FnDefAst<'input> {
-        data::fn_def_ast(left_fn_def, expr, dummy_info())
+        data::fn_def_ast(None, left_fn_def, expr, dummy_info())
     }
 
     fn left_fn_def_ast<'input>(name: &'input str, args: &[&'input str]) -> LeftFnDefAst<'input> {
@@ -509,7 +635,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_infix_op_prec() {
+    fn test_parse_infix_op_prec() {
         assert_eq!(parse("fn f a b c = a * b + c"), &[
             top_fn_def_ast(
                 fn_def_ast(
@@ -553,7 +679,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_infix_op_right_assoc() {
+    fn test_parse_infix_op_right_assoc() {
         assert_eq!(parse("fn f a b c = a <| b <| c"), &[
             top_fn_def_ast(
                 fn_def_ast(
@@ -577,7 +703,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_paren() {
+    fn test_parse_paren() {
         assert_eq!(parse("fn f a b c = (a + b) + c"), &[
             top_fn_def_ast(
                 fn_def_ast(
@@ -621,7 +747,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_prefix_op() {
+    fn test_parse_prefix_op() {
         assert_eq!(parse("fn f = -1"), &[
             top_fn_def_ast(
                 fn_def_ast(
@@ -649,6 +775,53 @@ mod tests {
                                 ),
                             ),
                             ident_expr_ast(ident_ast("1")),
+                        ),
+                    ),
+                ),
+            ),
+        ]);
+    }
+
+    #[test]
+    fn test_parse_ty_annot() {
+        assert_eq!(parse("ty i64 -> i64 fn f a = 0"), &[
+            top_fn_def_ast(
+                ty_fn_def_ast(
+                    ty_arrow_expr_ast(
+                        ty_arrow_ast(
+                            ty_ident_expr_ast(ty_ident_ast("i64")),
+                            ty_ident_expr_ast(ty_ident_ast("i64")),
+                        ),
+                    ),
+                    left_fn_def_ast("f", &["a"]),
+                    ident_expr_ast(ident_ast("0")),
+                ),
+            ),
+        ]);
+        assert_eq!(parse("ty (i64 -> i64) -> i64 -> i64 fn f a b = a b"), &[
+            top_fn_def_ast(
+                ty_fn_def_ast(
+                    ty_arrow_expr_ast(
+                        ty_arrow_ast(
+                            ty_arrow_expr_ast(
+                                ty_arrow_ast(
+                                    ty_ident_expr_ast(ty_ident_ast("i64")),
+                                    ty_ident_expr_ast(ty_ident_ast("i64")),
+                                ),
+                            ),
+                            ty_arrow_expr_ast(
+                                ty_arrow_ast(
+                                    ty_ident_expr_ast(ty_ident_ast("i64")),
+                                    ty_ident_expr_ast(ty_ident_ast("i64")),
+                                ),
+                            ),
+                        ),
+                    ),
+                    left_fn_def_ast("f", &["a", "b"]),
+                    fn_expr_ast(
+                        fn_ast(
+                            ident_expr_ast(ident_ast("a")),
+                            ident_expr_ast(ident_ast("b")),
                         ),
                     ),
                 ),

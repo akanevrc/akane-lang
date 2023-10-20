@@ -12,8 +12,34 @@ pub enum TopDefEnum<'input> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FnDefAst<'input> {
+    pub ty_annot: Option<Rc<TyExprAst<'input>>>,
     pub left_fn_def: LeftFnDefAst<'input>,
     pub expr: Rc<ExprAst<'input>>,
+    pub str_info: StrInfo<'input>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TyExprAst<'input> {
+    pub expr_enum: TyExprEnum<'input>,
+    pub str_info: StrInfo<'input>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum TyExprEnum<'input> {
+    Arrow(TyArrowAst<'input>),
+    Ident(TyIdentAst<'input>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TyArrowAst<'input> {
+    pub lhs: Rc<TyExprAst<'input>>,
+    pub rhs: Rc<TyExprAst<'input>>,
+    pub str_info: StrInfo<'input>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TyIdentAst<'input> {
+    pub name: String,
     pub str_info: StrInfo<'input>,
 }
 
