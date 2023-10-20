@@ -115,7 +115,10 @@ fn assume_keyword_or_ident<'input>(chars: &mut Peekable<CharInfos<'input>>) -> R
             info_tail = info;
         }
         let info = info_head.extend(&info_tail);
-        if is_fn(&token) {
+        if is_ty(&token) {
+            Ok(Some(TokenInfo(Token::Ty, info)))
+        }
+        else if is_fn(&token) {
             Ok(Some(TokenInfo(Token::Fn, info)))
         }
         else {
@@ -156,7 +159,10 @@ fn assume_symbol_or_op_code<'input>(chars: &mut Peekable<CharInfos<'input>>) -> 
             info_tail = info;
         }
         let info = info_head.extend(&info_tail);
-        if is_equal(&token) {
+        if is_arrow(&token) {
+            Ok(Some(TokenInfo(Token::Arrow, info)))
+        }
+        else if is_equal(&token) {
             Ok(Some(TokenInfo(Token::Equal, info)))
         }
         else {
@@ -242,8 +248,16 @@ fn is_r_paren(c: &char) -> bool {
     *c == ')'
 }
 
+fn is_ty(s: &str) -> bool {
+    s == "ty"
+}
+
 fn is_fn(s: &str) -> bool {
     s == "fn"
+}
+
+fn is_arrow(s: &str) -> bool {
+    s == "->"
 }
 
 fn is_equal(s: &str) -> bool {
@@ -279,6 +293,11 @@ mod tests {
     #[test]
     fn test_lex_semicolon() {
         assert_eq!(lex_to_tokens(";"), &[Token::Semicolon, Token::Eof]);
+    }
+
+    #[test]
+    fn test_lex_ty() {
+        assert_eq!(lex_to_tokens("ty"), &[Token::Ty, Token::Eof]);
     }
 
     #[test]
@@ -330,6 +349,7 @@ mod tests {
         assert_eq!(lex_to_tokens("|"), &[Token::OpCode("|".to_string()), Token::Eof]);
         assert_eq!(lex_to_tokens("-"), &[Token::OpCode("-".to_string()), Token::Eof]);
         assert_eq!(lex_to_tokens("~"), &[Token::OpCode("~".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("->"), &[Token::Arrow, Token::Eof]);
         assert_eq!(lex_to_tokens("!!"), &[Token::OpCode("!!".to_string()), Token::Eof]);
         assert_eq!(lex_to_tokens(">>="), &[Token::OpCode(">>=".to_string()), Token::Eof]);
     }
