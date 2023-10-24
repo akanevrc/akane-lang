@@ -1,34 +1,39 @@
 use std::rc::Rc;
 use crate::{
-    impl_sem_val,
-    impl_sem_key,
+    impl_construct_val,
+    impl_construct_key,
     data::*,
 };
 
 #[derive(Clone, Debug)]
-pub struct Ty1Sem {
+pub struct TVar {
     pub id: usize,
-    pub qual: Rc<QualSem>,
+    pub qual: Rc<Qual>,
     pub name: String,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Ty1Key {
+pub struct TVarKey {
     pub qual: QualKey,
     pub name: String,
 }
 
-impl_sem_val!(
-    Ty1Key,
-    Ty1Sem,
-    Ty1Key {
-        qual: self.qual.to_key(),
-        name: self.name.clone()
-    }
-);
-impl_sem_key!(Ty1Key, Ty1Sem, ty1_store);
+impl_construct_val!(TVar);
 
-impl Sem for Ty1Key {
+impl ConstructVal for TVar {
+    type Key = TVarKey;
+
+    fn to_key(&self) -> Self::Key {
+        Self::Key {
+            qual: self.qual.to_key(),
+            name: self.name.clone(),
+        }
+    }
+}
+
+impl_construct_key!(TVarKey, TVar, tvar_store);
+
+impl Construct for TVarKey {
     fn logical_name(&self) -> String {
         format!(
             "{}{}",
@@ -46,19 +51,19 @@ impl Sem for Ty1Key {
     }
 }
 
-impl Ty1Sem {
-    pub fn new_or_get(ctx: &mut SemContext, qual: Rc<QualSem>, name: String) -> Rc<Self> {
+impl TVar {
+    pub fn new_or_get(ctx: &mut Context, qual: Rc<Qual>, name: String) -> Rc<Self> {
         let val = Rc::new(Self {
-            id: ctx.ty1_store.next_id(),
+            id: ctx.tvar_store.next_id(),
             qual,
             name,
         });
         let key = val.to_key();
-        ctx.ty1_store.insert_or_get(key, val)
+        ctx.tvar_store.insert_or_get(key, val)
     }
 }
 
-impl Ty1Key {
+impl TVarKey {
     pub fn new(qual: QualKey, name: String) -> Self {
         Self { qual, name }
     }

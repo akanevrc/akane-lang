@@ -1,21 +1,21 @@
 use crate::data::*;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum ScopeSem {
-    Fn(String),
+pub enum Scope {
+    Abs(String),
 }
 
-impl Sem for ScopeSem {
+impl Construct for Scope {
     fn logical_name(&self) -> String {
         match self {
-            Self::Fn(x) =>
+            Self::Abs(x) =>
                 x.clone(),
         }
     }
 
     fn description(&self) -> String {
         match self {
-            Self::Fn(x) =>
+            Self::Abs(x) =>
                 format!("fn {}", x),
         }
     }

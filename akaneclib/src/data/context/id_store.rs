@@ -11,25 +11,30 @@ use crate::data::*;
 
 pub struct IdStore<Key, Val>
 where
-    Key: Clone + Eq + Hash + Sem,
+    Key: Clone + Eq + Hash + Construct,
 {
     id_map: HashMap<Key, usize>,
     vals: Vec<Rc<Val>>,
 }
 
+impl<Key, Val> IdProvider for IdStore<Key, Val>
+where
+    Key: Clone + Eq + Hash + Construct,
+{
+    fn next_id(&self) -> usize {
+        self.vals.len()
+    }
+}
+
 impl<Key, Val> IdStore<Key, Val>
 where
-    Key: Clone + Eq + Hash + Sem,
+    Key: Clone + Eq + Hash + Construct,
 {
     pub fn new() -> Self {
         Self {
             id_map: HashMap::new(),
             vals: Vec::new(),
         }
-    }
-
-    pub fn next_id(&self) -> usize {
-        self.vals.len()
     }
 
     pub fn insert(&mut self, key: Key, val: Rc<Val>) -> Result<Rc<Val>> {

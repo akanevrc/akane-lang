@@ -16,7 +16,7 @@ impl QualStack {
         }
     }
 
-    pub fn push(&mut self, qual: &Rc<QualSem>) -> QualKey {
+    pub fn push(&mut self, qual: &Rc<Qual>) -> QualKey {
         let key = qual.to_key();
         self.stack.push(key.clone());
         key

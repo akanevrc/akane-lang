@@ -10,14 +10,14 @@ use crate::data::*;
 
 pub struct GenericStore<Key, Val>
 where
-    Key: Clone + Eq + Hash + Sem,
+    Key: Clone + Eq + Hash + Construct,
 {
     map: HashMap<Key, Val>,
 }
 
 impl<Key, Val> GenericStore<Key, Val>
 where
-    Key: Clone + Eq + Hash + Sem,
+    Key: Clone + Eq + Hash + Construct,
 {
     pub fn new() -> Self {
         Self {
@@ -54,7 +54,7 @@ where
 
 impl<Key, Val> GenericStore<Key, Vec<Val>>
 where
-    Key: Clone + Eq + Hash + Sem,
+    Key: Clone + Eq + Hash + Construct,
 {
     pub fn push_into_vec(&mut self, key: &Key, val: Val) {
         if !self.map.contains_key(key) {

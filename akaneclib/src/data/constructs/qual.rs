@@ -1,37 +1,36 @@
 use std::rc::Rc;
-use anyhow::Result;
-use crate::data::*;
+use crate::{
+    impl_construct_val,
+    impl_construct_key,
+    data::*,
+};
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct QualSem {
+#[derive(Clone, Debug)]
+pub struct Qual {
     pub id: usize,
-    pub scopes: Vec<ScopeSem>,
+    pub scopes: Vec<Scope>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct QualKey {
-    pub scopes: Vec<ScopeSem>,
+    pub scopes: Vec<Scope>,
 }
 
-impl Sem for QualSem {
-    fn logical_name(&self) -> String {
-        self.to_key().logical_name()
-    }
+impl_construct_val!(Qual);
 
-    fn description(&self) -> String {
-        self.to_key().description()
-    }
-}
+impl ConstructVal for Qual {
+    type Key = QualKey;
 
-impl SemVal<QualKey> for QualSem {
-    fn to_key(&self) -> QualKey {
-        QualKey {
+    fn to_key(&self) -> Self::Key {
+        Self::Key {
             scopes: self.scopes.clone(),
         }
     }
 }
 
-impl Sem for QualKey {
+impl_construct_key!(QualKey, Qual, qual_store);
+
+impl Construct for QualKey {
     fn logical_name(&self) -> String {
         self.qualify_logical_name_self(".")
     }
@@ -41,18 +40,12 @@ impl Sem for QualKey {
     }
 }
 
-impl SemKey<QualSem> for QualKey {
-    fn get_val(&self, ctx: &SemContext) -> Result<Rc<QualSem>> {
-        ctx.qual_store.get(self)
-    }
-}
-
-impl QualSem {
-    pub fn top(ctx: &mut SemContext) -> Rc<Self> {
-        QualSem::new_or_get(ctx, &QualKey::top())
+impl Qual {
+    pub fn top(ctx: &mut Context) -> Rc<Self> {
+        Qual::new_or_get(ctx, &QualKey::top())
     }
 
-    fn new_or_get_one(ctx: &mut SemContext, scopes: Vec<ScopeSem>) -> Rc<Self> {
+    fn new_or_get_one(ctx: &mut Context, scopes: Vec<Scope>) -> Rc<Self> {
         let value = Rc::new(Self {
             id: ctx.qual_store.next_id(),
             scopes,
@@ -61,7 +54,7 @@ impl QualSem {
         ctx.qual_store.insert_or_get(key, value)
     }
 
-    pub fn new_or_get(ctx: &mut SemContext, key: &QualKey) -> Rc<Self> {
+    pub fn new_or_get(ctx: &mut Context, key: &QualKey) -> Rc<Self> {
         for n in 1..key.scopes.len() {
             Self::new_or_get_one(ctx, key.scopes.iter().take(n).cloned().collect());
         }
@@ -74,11 +67,11 @@ impl QualKey {
         Self::new(Vec::new())
     }
 
-    pub fn new(scopes: Vec<ScopeSem>) -> Self {
+    pub fn new(scopes: Vec<Scope>) -> Self {
         Self { scopes }
     }
 
-    pub fn pushed(&self, scope: ScopeSem) -> Self {
+    pub fn pushed(&self, scope: Scope) -> Self {
         let mut cloned = self.scopes.clone();
         cloned.push(scope);
         Self::new(cloned)
