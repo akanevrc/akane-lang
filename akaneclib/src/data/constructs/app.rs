@@ -7,8 +7,8 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct App {
     pub id: usize,
-    pub f: Rc<Expr>,
-    pub arg: Rc<Expr>,
+    pub fn_expr: Rc<Expr>,
+    pub arg_expr: Rc<Expr>,
 }
 
 impl_id!(App);
@@ -24,11 +24,11 @@ impl Construct for App {
 }
 
 impl App {
-    pub fn new(ctx: &mut Context, f: Rc<Expr>, arg: Rc<Expr>) -> Rc<Self> {
+    pub fn new(ctx: &mut Context, fn_expr: Rc<Expr>, arg_expr: Rc<Expr>) -> Rc<Self> {
         let val = Rc::new(Self {
             id: ctx.app_id.next_id(),
-            f,
-            arg,
+            fn_expr,
+            arg_expr,
         });
         ctx.app_id.increment();
         val

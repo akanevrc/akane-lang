@@ -102,7 +102,7 @@ impl Expr {
             Self::Abs(abs) =>
                 abs.expr.ty(),
             Self::App(app) =>
-                app.f.ty().to_out_ty(),
+                app.fn_expr.ty().to_out_ty(),
         }
     }
 }
