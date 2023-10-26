@@ -89,8 +89,8 @@ impl Expr {
         Rc::new(Self::Abs(Abs::new(ctx, args, expr)))
     }
 
-    pub fn new_as_app(ctx: &mut Context, args: Vec<Rc<Var>>, expr: Rc<Expr>) -> Rc<Self> {
-        Rc::new(Self::Abs(Abs::new(ctx, args, expr)))
+    pub fn new_as_app(ctx: &mut Context, fn_expr: Rc<Expr>, arg_expr: Rc<Expr>) -> Rc<Self> {
+        Rc::new(Self::App(App::new(ctx, fn_expr, arg_expr)))
     }
 
     pub fn ty(&self) -> Rc<Ty> {
