@@ -1,0 +1,197 @@
+use std::rc::Rc;
+use anyhow::{
+    Error,
+    Result,
+};
+use crate::data::*;
+use crate::anyhow_info;
+
+macro_rules! anyhow_ast_with_line {
+    ($errs:ident, $ast:expr, $msg:expr, $($arg:tt)*) => {
+        {
+            let info = &$ast.str_info;
+            let target_part_of_line = format!("\n{}", info.target_part_of_line());
+            $errs.push(anyhow_info!(info, $msg, $($arg),* target_part_of_line));
+            $errs
+        }
+    };
+}
+
+macro_rules! bail_ast_with_line {
+    ($errs:ident, $ast:expr, $msg:expr, $($arg:tt)*) => {
+        {
+            return Err(anyhow_ast_with_line!($errs, $ast, $msg, $($arg),*));
+        }
+    };
+}
+
+macro_rules! visit_with_errors {
+    ($result:expr, $errs:ident) => {
+        match $result {
+            Ok(val) => Ok(val),
+            Err(mut es) => {
+                $errs.append(&mut es);
+                Err(())
+            },
+        }
+    };
+}
+
+macro_rules! try_with_errors {
+    ($result:expr, $ast:expr, $errs:ident) => {
+        match $result {
+            Ok(val) => val,
+            Err(e) => {
+                bail_ast_with_line!($errs, $ast, "{}{}", e);
+            },
+        }
+    };
+}
+
+pub fn semantize(ctx: &mut Context, top_def_enums: &[TopDefEnum]) -> Result<(), Vec<Error>> {
+    let mut errs = Vec::new();
+    for top_def_enum in top_def_enums {
+        visit_with_errors!(visit_top_def(ctx, top_def_enum), errs).ok();
+    }
+    if errs.len() == 0 {
+        Ok(())
+    }
+    else {
+        Err(errs)
+    }
+}
+
+fn visit_top_def(ctx: &mut Context, top_def_enum: &TopDefEnum) -> Result<Rc<Var>, Vec<Error>> {
+    Ok(match top_def_enum {
+        TopDefEnum::FnDef(fn_def_ast) => visit_fn_def(ctx, fn_def_ast)?,
+    })
+}
+
+fn visit_fn_def(ctx: &mut Context, fn_def_ast: &FnDefAst) -> Result<Rc<Var>, Vec<Error>> {
+    let mut errs = Vec::new();
+    let qual = try_with_errors!(ctx.qual_stack.peek().get_val(ctx), fn_def_ast.left_fn_def, errs);
+    let name = &fn_def_ast.left_fn_def.name;
+    let arg_names = &fn_def_ast.left_fn_def.args;
+    let fn_ty =
+        if let Some(ty_annot) = &fn_def_ast.ty_annot {
+            match visit_with_errors!(visit_ty_expr(ctx, ty_annot), errs) {
+                Ok(ty) => ty,
+                Err(_) => return Err(errs),
+            }
+        }
+        else {
+            let i64_ty = try_with_errors!(TyKey::new_as_base("i64".to_owned()).get_val(ctx), fn_def_ast.left_fn_def, errs);
+            let fn_in_tys = vec![i64_ty.clone(); arg_names.len()];
+            let fn_out_ty = i64_ty.clone();
+            Ty::new_or_get_as_fn_ty(ctx, fn_in_tys, fn_out_ty)
+        };
+    let var =
+        match Var::new(ctx, qual, name.clone(), fn_ty.clone()) {
+            Ok(var) => var,
+            Err(_) =>
+                bail_ast_with_line!(errs, fn_def_ast.left_fn_def, "Duplicate function definitions: `{}`{}", name),
+        };
+    let qual = try_with_errors!(ctx.push_scope_into_qual_stack(Scope::Abs(name.clone())).get_val(ctx), fn_def_ast.left_fn_def, errs);
+    let (arg_tys, ret_ty) = fn_ty.to_arg_and_ret_tys();
+    if arg_tys.len() != arg_names.len() {
+        bail_ast_with_line!(errs, fn_def_ast.left_fn_def, "Defferent argument count between type annotation and function definition: `{}`{}", name);
+    }
+    let args =
+        try_with_errors!(
+            arg_names.iter()
+            .zip(arg_tys)
+            .map(|(name, arg_ty)| Ok(Var::new(ctx, qual.clone(), name.clone(), arg_ty.clone())?))
+            .collect::<Result<Vec<_>>>(),
+            fn_def_ast.left_fn_def,
+            errs
+        );
+    let expr = visit_expr(ctx, &fn_def_ast.expr)?;
+    if ret_ty != expr.ty() {
+        bail_ast_with_line!(errs, fn_def_ast.left_fn_def, "Defferent type between type annotation and function body: `{}`{}", name);
+    }
+    let abs = Abs::new(ctx, args, expr);
+    try_with_errors!(ctx.bind_store.insert(var.to_key(), abs), fn_def_ast.left_fn_def, errs);
+    try_with_errors!(ctx.qual_stack.pop(), fn_def_ast.left_fn_def, errs);
+    Ok(var)
+}
+
+fn visit_ty_expr(ctx: &mut Context, ty_expr_ast: &TyExprAst) -> Result<Rc<Ty>, Vec<Error>> {
+    Ok(match &ty_expr_ast.expr_enum {
+        TyExprEnum::Arrow(ty_arrow) =>
+            Rc::new(Ty::Arrow(visit_ty_arrow(ctx, ty_arrow)?)),
+        TyExprEnum::Ident(ty_ident) =>
+            if is_base(&ty_ident.name) {
+                Rc::new(Ty::Base(visit_ty_ident_as_base(ctx, ty_ident)?))
+            }
+            else {
+                Rc::new(Ty::TVar(visit_ty_ident_as_tvar(ctx, ty_ident)?))
+            },
+    })
+}
+
+fn is_base(name: &str) -> bool {
+    [
+        "i64",
+    ].contains(&name) ||
+    name.chars().next().map_or(false, char::is_uppercase)
+}
+
+fn visit_ty_arrow(ctx: &mut Context, ty_arrow_ast: &TyArrowAst) -> Result<Rc<Arrow>, Vec<Error>> {
+    let mut errs = Vec::new();
+    match (
+        visit_with_errors!(visit_ty_expr(ctx, &ty_arrow_ast.lhs), errs),
+        visit_with_errors!(visit_ty_expr(ctx, &ty_arrow_ast.rhs), errs),
+    ) {
+        (Ok(in_ty), Ok(out_ty)) =>
+            Ok(Arrow::new_or_get(ctx, in_ty, out_ty)),
+        _ => Err(errs),
+    }
+}
+
+fn visit_ty_ident_as_tvar(ctx: &mut Context, ty_ident_ast: &TyIdentAst) -> Result<Rc<TVar>, Vec<Error>> {
+    let top = Qual::top(ctx);
+    Ok(TVar::new_or_get(ctx, top, ty_ident_ast.name.clone()))
+}
+
+fn visit_ty_ident_as_base(ctx: &mut Context, ty_ident_ast: &TyIdentAst) -> Result<Rc<Base>, Vec<Error>> {
+    Ok(Base::new_or_get(ctx, ty_ident_ast.name.clone()))
+}
+
+fn visit_expr(ctx: &mut Context, expr_ast: &ExprAst) -> Result<Rc<Expr>, Vec<Error>> {
+    Ok(match &expr_ast.expr_enum {
+        ExprEnum::App(app_ast) =>
+            Rc::new(Expr::App(visit_app(ctx, app_ast)?)),
+        ExprEnum::Ident(ident_ast) =>
+            Rc::new(Expr::Var(visit_ident(ctx, ident_ast)?)),
+        ExprEnum::Num(num_ast) =>
+            Rc::new(Expr::Cn(visit_num(ctx, num_ast)?)),
+    })
+}
+
+fn visit_app(ctx: &mut Context, app_ast: &AppAst) -> Result<Rc<App>, Vec<Error>> {
+    let mut errs = Vec::new();
+    match (
+        visit_with_errors!(visit_expr(ctx, &app_ast.fn_expr), errs),
+        visit_with_errors!(visit_expr(ctx, &app_ast.arg_expr), errs),
+    ) {
+        (Ok(fn_expr), Ok(arg_expr)) =>
+            Ok(App::new(ctx, fn_expr, arg_expr)),
+        _ => Err(errs),
+    }
+}
+
+fn visit_ident(ctx: &mut Context, ident_ast: &IdentAst) -> Result<Rc<Var>, Vec<Error>> {
+    ctx.find_with_qual(|ctx, qual|
+        VarKey::new(qual.to_key(), ident_ast.name.clone()).get_val(ctx).ok()
+    )
+    .ok_or_else(|| {
+        let mut errs = Vec::new();
+        anyhow_ast_with_line!(errs, ident_ast, "Unknown variable: `{}`{}", (ident_ast.name))
+    })
+}
+
+fn visit_num(ctx: &mut Context, num_ast: &NumAst) -> Result<Rc<Cn>, Vec<Error>> {
+    let mut errs = Vec::new();
+    let i64_ty = try_with_errors!(TyKey::new_as_base("i64".to_owned()).get_val(ctx), num_ast, errs);
+    Ok(Cn::new_or_get(ctx, num_ast.value.clone(), i64_ty))
+}
