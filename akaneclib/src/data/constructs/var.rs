@@ -75,11 +75,6 @@ impl Var {
         let key = val.to_key();
         ctx.var_store.insert_or_get(key, val)
     }
-
-    pub fn get(ctx: &Context, qual: QualKey, name: String) -> Result<Rc<Self>> {
-        let key = VarKey::new(qual, name);
-        key.get_val(ctx)
-    }
 }
 
 impl VarKey {

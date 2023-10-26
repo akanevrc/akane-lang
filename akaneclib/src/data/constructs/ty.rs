@@ -5,7 +5,6 @@ use std::{
     },
     rc::Rc,
 };
-use anyhow::Result;
 use crate::{
     impl_construct_key,
     data::*,
@@ -130,21 +129,6 @@ impl Ty {
             ty = Self::new_or_get_as_arrow(ctx, in_ty, ty);
         }
         ty
-    }
-
-    pub fn get_as_tvar(ctx: &Context, qual: QualKey, name: String) -> Result<Rc<Self>> {
-        let key = TyKey::new_as_tvar(qual, name);
-        key.get_val(ctx)
-    }
-
-    pub fn get_as_base(ctx: &Context, name: String) -> Result<Rc<Self>> {
-        let key = TyKey::new_as_base(name);
-        key.get_val(ctx)
-    }
-
-    pub fn get_as_arrow(ctx: &Context, in_ty: TyKey, out_ty: TyKey) -> Result<Rc<Self>> {
-        let key = TyKey::new_as_arrow(in_ty, out_ty);
-        key.get_val(ctx)
     }
 
     pub fn to_arg_and_ret_tys(self: Rc<Self>) -> (Vec<Rc<Self>>, Rc<Self>) {

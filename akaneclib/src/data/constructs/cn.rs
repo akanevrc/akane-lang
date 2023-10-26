@@ -62,11 +62,6 @@ impl Cn {
         let key = val.to_key();
         ctx.cn_store.insert_or_get(key, val)
     }
-
-    pub fn get(ctx: &Context, name: String) -> Result<Rc<Self>> {
-        let key = CnKey::new(name);
-        key.get_val(ctx)
-    }
 }
 
 impl CnKey {
