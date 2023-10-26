@@ -22,8 +22,7 @@ pub struct Context {
     pub arrow_store: IdStore<ArrowKey, Arrow>,
     pub qual_store: IdStore<QualKey, Qual>,
     pub qual_stack: QualStack,
-    pub arity_var_store: GenericStore<VarKey, Vec<Rc<Var>>>,
-    pub next_var_store: GenericStore<VarKey, Rc<Var>>,
+    pub bind_store: GenericStore<VarKey, Rc<Abs>>,
 }
 
 impl Context {
@@ -39,8 +38,7 @@ impl Context {
             arrow_store: IdStore::new(),
             qual_store: IdStore::new(),
             qual_stack: QualStack::new(),
-            arity_var_store: GenericStore::new(),
-            next_var_store: GenericStore::new(),
+            bind_store: GenericStore::new(),
         };
         Qual::top(&mut ctx);
         ctx
