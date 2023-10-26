@@ -254,7 +254,7 @@ fn assume_term<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'inp
         let mut term = factor.clone();
         while let Some(f) = assume_factor(tokens)? {
             let extended = factor.str_info.extend(&f.str_info);
-            term = fn_expr_ast(fn_ast(term, f, extended.clone()), extended);
+            term = app_expr_ast(app_ast(term, f, extended.clone()), extended);
         }
         Ok(Some(term))
     }
@@ -271,7 +271,7 @@ fn assume_prefix_op_lhs<'input>(tokens: &mut Peekable<impl Iterator<Item = Token
         if let Some(term) = assume_term(tokens)? {
             let name = prefix_op_name(&op_code, tokens)?;
             let extended = info.extend(&term.str_info);
-            return Ok(Some(fn_expr_ast(prefix_op_ast(name, term, extended.clone(), info), extended)));
+            return Ok(Some(app_expr_ast(prefix_op_ast(name, term, extended.clone(), info), extended)));
         }
         bail_tokens_with_line!(tokens, "Term required:{}");
     }
@@ -306,7 +306,7 @@ fn assume_infix_op_rhs<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenI
             }
             let name = infix_op_name(&op_code, tokens)?;
             let extended = lhs.str_info.extend(&rhs.str_info);
-            lhs = fn_expr_ast(infix_op_ast(name, lhs.clone(), rhs, extended.clone(), info, lhs.str_info.clone()), extended);
+            lhs = app_expr_ast(infix_op_ast(name, lhs.clone(), rhs, extended.clone(), info, lhs.str_info.clone()), extended);
         }
         else {
             bail_tokens_with_line!(tokens, "Term required:{}");
@@ -323,7 +323,7 @@ fn assume_factor<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'i
         Ok(Some(ident_expr_ast(ident.clone(), ident.str_info)))
     }
     else if let Some(num) = assume_num(tokens)? {
-        Ok(Some(ident_expr_ast(num.clone(), num.str_info)))
+        Ok(Some(num_expr_ast(num.clone(), num.str_info)))
     }
     else {
         Ok(None)
@@ -359,12 +359,12 @@ fn assume_ident<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'in
     }
 }
 
-fn assume_num<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<IdentAst<'input>>> {
+fn assume_num<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<NumAst<'input>>> {
     if let Some(TokenInfo(Token::Num(value), info)) = tokens.peek() {
         let value = value.clone();
         let info = info.clone();
         tokens.next();
-        Ok(Some(ident_ast(value, info)))
+        Ok(Some(num_ast(value, info)))
     }
     else {
         Ok(None)
@@ -458,28 +458,36 @@ mod tests {
         data::left_fn_def_ast(name.to_owned(), args.to_owned().into_iter().map(|s| s.to_owned()).collect(), dummy_info())
     }
 
-    fn fn_expr_ast<'input>(fn_ast: FnAst<'input>) -> Rc<ExprAst<'input>> {
-        data::fn_expr_ast(fn_ast, dummy_info())
+    fn app_expr_ast<'input>(app_ast: AppAst<'input>) -> Rc<ExprAst<'input>> {
+        data::app_expr_ast(app_ast, dummy_info())
     }
 
     fn ident_expr_ast<'input>(ident_ast: IdentAst<'input>) -> Rc<ExprAst<'input>> {
         data::ident_expr_ast(ident_ast, dummy_info())
     }
 
-    fn fn_ast<'input>(fn_expr: Rc<ExprAst<'input>>, arg_expr: Rc<ExprAst<'input>>) -> FnAst<'input> {
-        data::fn_ast(fn_expr, arg_expr, dummy_info())
+    fn num_expr_ast<'input>(num_ast: NumAst<'input>) -> Rc<ExprAst<'input>> {
+        data::num_expr_ast(num_ast, dummy_info())
     }
 
-    fn prefix_op_ast<'input>(op_code: &'input str, rhs: Rc<ExprAst<'input>>) -> FnAst<'input> {
+    fn app_ast<'input>(fn_expr: Rc<ExprAst<'input>>, arg_expr: Rc<ExprAst<'input>>) -> AppAst<'input> {
+        data::app_ast(fn_expr, arg_expr, dummy_info())
+    }
+
+    fn prefix_op_ast<'input>(op_code: &'input str, rhs: Rc<ExprAst<'input>>) -> AppAst<'input> {
         data::prefix_op_ast(op_code.to_owned(), rhs, dummy_info(), dummy_info())
     }
 
-    fn infix_op_ast<'input>(op_code: &'input str, lhs: Rc<ExprAst<'input>>, rhs: Rc<ExprAst<'input>>) -> FnAst<'input> {
+    fn infix_op_ast<'input>(op_code: &'input str, lhs: Rc<ExprAst<'input>>, rhs: Rc<ExprAst<'input>>) -> AppAst<'input> {
         data::infix_op_ast(op_code.to_owned(), lhs, rhs, dummy_info(), dummy_info(), dummy_info())
     }
 
     fn ident_ast<'input>(name: &'input str) -> IdentAst<'input> {
         data::ident_ast(name.to_owned(), dummy_info())
+    }
+
+    fn num_ast<'input>(value: &'input str) -> NumAst<'input> {
+        data::num_ast(value.to_owned(), dummy_info())
     }
 
     fn dummy_info<'a>() -> StrInfo<'a> {
@@ -497,7 +505,7 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["a"]),
-                    ident_expr_ast(ident_ast("0")),
+                    num_expr_ast(num_ast("0")),
                 ),
             ),
         ]);
@@ -505,7 +513,7 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["a", "b"]),
-                    ident_expr_ast(ident_ast("0")),
+                    num_expr_ast(num_ast("0")),
                 ),
             ),
         ]);
@@ -537,7 +545,7 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &[]),
-                    ident_expr_ast(ident_ast("0")),
+                    num_expr_ast(num_ast("0")),
                 ),
             ),
         ]);
@@ -545,7 +553,7 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &[]),
-                    ident_expr_ast(ident_ast("123")),
+                    num_expr_ast(num_ast("123")),
                 ),
             ),
         ]);
@@ -557,8 +565,8 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["g", "a"]),
-                    fn_expr_ast(
-                        fn_ast(
+                    app_expr_ast(
+                        app_ast(
                             ident_expr_ast(ident_ast("g")),
                             ident_expr_ast(ident_ast("a")),
                         ),
@@ -570,10 +578,10 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["g", "a", "b"]),
-                    fn_expr_ast(
-                        fn_ast(
-                            fn_expr_ast(
-                                fn_ast(
+                    app_expr_ast(
+                        app_ast(
+                            app_expr_ast(
+                                app_ast(
                                     ident_expr_ast(ident_ast("g")),
                                     ident_expr_ast(ident_ast("a")),
                                 ),
@@ -592,11 +600,11 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["a"]),
-                    fn_expr_ast(
+                    app_expr_ast(
                         infix_op_ast(
                             "add",
                             ident_expr_ast(ident_ast("a")),
-                            ident_expr_ast(ident_ast("1")),
+                            num_expr_ast(num_ast("1")),
                         ),
                     ),
                 ),
@@ -606,20 +614,20 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["g", "a", "b", "c"]),
-                    fn_expr_ast(
+                    app_expr_ast(
                         infix_op_ast(
                             "add",
-                            fn_expr_ast(
+                            app_expr_ast(
                                 infix_op_ast(
                                     "add",
-                                    fn_expr_ast(
-                                        fn_ast(
+                                    app_expr_ast(
+                                        app_ast(
                                             ident_expr_ast(ident_ast("g")),
                                             ident_expr_ast(ident_ast("a")),
                                         ),
                                     ),
-                                    fn_expr_ast(
-                                        fn_ast(
+                                    app_expr_ast(
+                                        app_ast(
                                             ident_expr_ast(ident_ast("g")),
                                             ident_expr_ast(ident_ast("b")),
                                         ),
@@ -640,10 +648,10 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["a", "b", "c"]),
-                    fn_expr_ast(
+                    app_expr_ast(
                         infix_op_ast(
                             "add",
-                            fn_expr_ast(
+                            app_expr_ast(
                                 infix_op_ast(
                                     "mul",
                                     ident_expr_ast(ident_ast("a")),
@@ -660,11 +668,11 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["a", "b", "c"]),
-                    fn_expr_ast(
+                    app_expr_ast(
                         infix_op_ast(
                             "add",
                             ident_expr_ast(ident_ast("a")),
-                            fn_expr_ast(
+                            app_expr_ast(
                                 infix_op_ast(
                                     "mul",
                                     ident_expr_ast(ident_ast("b")),
@@ -684,11 +692,11 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["a", "b", "c"]),
-                    fn_expr_ast(
+                    app_expr_ast(
                         infix_op_ast(
                             "pipelineL",
                             ident_expr_ast(ident_ast("a")),
-                            fn_expr_ast(
+                            app_expr_ast(
                                 infix_op_ast(
                                     "pipelineL",
                                     ident_expr_ast(ident_ast("b")),
@@ -708,10 +716,10 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["a", "b", "c"]),
-                    fn_expr_ast(
+                    app_expr_ast(
                         infix_op_ast(
                             "add",
-                            fn_expr_ast(
+                            app_expr_ast(
                                 infix_op_ast(
                                     "add",
                                     ident_expr_ast(ident_ast("a")),
@@ -728,11 +736,11 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &[]),
-                    fn_expr_ast(
+                    app_expr_ast(
                         infix_op_ast(
                             "add",
                             ident_expr_ast(ident_ast("a")),
-                            fn_expr_ast(
+                            app_expr_ast(
                                 infix_op_ast(
                                     "add",
                                     ident_expr_ast(ident_ast("b")),
@@ -752,10 +760,10 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &[]),
-                    fn_expr_ast(
+                    app_expr_ast(
                         prefix_op_ast(
                             "negate",
-                            ident_expr_ast(ident_ast("1")),
+                            num_expr_ast(num_ast("1")),
                         ),
                     ),
                 ),
@@ -765,16 +773,16 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &[]),
-                    fn_expr_ast(
+                    app_expr_ast(
                         infix_op_ast(
                             "add",
-                            fn_expr_ast(
+                            app_expr_ast(
                                 prefix_op_ast(
                                     "negate",
                                     ident_expr_ast(ident_ast("a")),
                                 ),
                             ),
-                            ident_expr_ast(ident_ast("1")),
+                            num_expr_ast(num_ast("1")),
                         ),
                     ),
                 ),
@@ -794,7 +802,7 @@ mod tests {
                         ),
                     ),
                     left_fn_def_ast("f", &["a"]),
-                    ident_expr_ast(ident_ast("0")),
+                    num_expr_ast(num_ast("0")),
                 ),
             ),
         ]);
@@ -818,8 +826,8 @@ mod tests {
                         ),
                     ),
                     left_fn_def_ast("f", &["a", "b"]),
-                    fn_expr_ast(
-                        fn_ast(
+                    app_expr_ast(
+                        app_ast(
                             ident_expr_ast(ident_ast("a")),
                             ident_expr_ast(ident_ast("b")),
                         ),

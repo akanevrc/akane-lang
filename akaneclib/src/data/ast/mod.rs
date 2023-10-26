@@ -7,7 +7,7 @@ use crate::data::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TopDefEnum<'input> {
-    Fn(FnDefAst<'input>),
+    FnDef(FnDefAst<'input>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -58,12 +58,13 @@ pub struct ExprAst<'input> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExprEnum<'input> {
-    Fn(FnAst<'input>),
+    App(AppAst<'input>),
     Ident(IdentAst<'input>),
+    Num(NumAst<'input>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct FnAst<'input> {
+pub struct AppAst<'input> {
     pub fn_expr: Rc<ExprAst<'input>>,
     pub arg_expr: Rc<ExprAst<'input>>,
     pub str_info: StrInfo<'input>,
@@ -72,5 +73,11 @@ pub struct FnAst<'input> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct IdentAst<'input> {
     pub name: String,
+    pub str_info: StrInfo<'input>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NumAst<'input> {
+    pub value: String,
     pub str_info: StrInfo<'input>,
 }
