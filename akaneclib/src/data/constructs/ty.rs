@@ -134,17 +134,17 @@ impl Ty {
 
     pub fn get_as_tvar(ctx: &Context, qual: QualKey, name: String) -> Result<Rc<Self>> {
         let key = TyKey::new_as_tvar(qual, name);
-        key.get(ctx)
+        key.get_val(ctx)
     }
 
     pub fn get_as_base(ctx: &Context, name: String) -> Result<Rc<Self>> {
         let key = TyKey::new_as_base(name);
-        key.get(ctx)
+        key.get_val(ctx)
     }
 
     pub fn get_as_arrow(ctx: &Context, in_ty: TyKey, out_ty: TyKey) -> Result<Rc<Self>> {
         let key = TyKey::new_as_arrow(in_ty, out_ty);
-        key.get(ctx)
+        key.get_val(ctx)
     }
 
     pub fn to_arg_and_ret_tys(self: Rc<Self>) -> (Vec<Rc<Self>>, Rc<Self>) {
@@ -190,9 +190,5 @@ impl TyKey {
 
     pub fn new_as_arrow(in_ty: TyKey, out_ty: TyKey) -> Self {
         Self::Arrow(ArrowKey::new(in_ty, out_ty))
-    }
-
-    pub fn get(&self, ctx: &Context) -> Result<Rc<Ty>> {
-        ctx.ty_store.get(self)
     }
 }

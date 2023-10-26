@@ -65,16 +65,12 @@ impl Cn {
 
     pub fn get(ctx: &Context, name: String) -> Result<Rc<Self>> {
         let key = CnKey::new(name);
-        key.get(ctx)
+        key.get_val(ctx)
     }
 }
 
 impl CnKey {
     pub fn new(name: String) -> Self {
         Self { name }
-    }
-
-    pub fn get(&self, ctx: &Context) -> Result<Rc<Cn>> {
-        ctx.cn_store.get(self)
     }
 }

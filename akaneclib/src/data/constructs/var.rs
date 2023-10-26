@@ -78,16 +78,12 @@ impl Var {
 
     pub fn get(ctx: &Context, qual: QualKey, name: String) -> Result<Rc<Self>> {
         let key = VarKey::new(qual, name);
-        key.get(ctx)
+        key.get_val(ctx)
     }
 }
 
 impl VarKey {
     pub fn new(qual: QualKey, name: String) -> Self {
         Self { qual, name }
-    }
-
-    pub fn get(&self, ctx: &Context) -> Result<Rc<Var>> {
-        ctx.var_store.get(self)
     }
 }
