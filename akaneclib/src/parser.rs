@@ -417,13 +417,16 @@ fn op_code_precedence<'input>(op_code: &str, tokens: &mut Peekable<impl Iterator
 #[cfg(test)]
 mod tests {
     use std::rc::Rc;
-    use crate::data::{
-        self,
-        *,
+    use crate::{
+        data::{
+            self,
+            *,
+        },
+        lexer,
     };
 
     fn parse<'input>(s: &'input str) -> Vec<TopDefEnum<'input>> {
-        super::parse(crate::lexer::lex(s).unwrap()).unwrap()
+        super::parse(lexer::lex(s).unwrap()).unwrap()
     }
 
     fn top_fn_def_ast<'input>(fn_def_ast: FnDefAst<'input>) -> TopDefEnum<'input> {
