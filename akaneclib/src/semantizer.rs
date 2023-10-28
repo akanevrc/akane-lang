@@ -178,3 +178,38 @@ fn visit_num(ctx: &mut Context, num_ast: &NumAst) -> Result<Rc<Cn>, Vec<Error>> 
     let i64_ty = try_with_errors!(TyKey::new_as_base("I64".to_owned()).get_val(ctx), num_ast, errs);
     Ok(Cn::new_or_get(ctx, num_ast.value.clone(), i64_ty))
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Error;
+    use crate::{
+        data::*,
+        lexer,
+        parser,
+    };
+
+    fn semantize(s: &str) -> Result<Context, Vec<Error>> {
+        let parsed = parser::parse(lexer::lex(s).unwrap()).unwrap();
+        let mut ctx = Context::new();
+        super::semantize(&mut ctx, &parsed)
+        .map(|_| ctx)
+    }
+
+    #[test]
+    fn test_id() {
+        let mut ctx = semantize("fn id x = x").unwrap();
+        let top = Qual::top(&mut ctx).to_key();
+        let id = ctx.var_store.get(&VarKey::new(top.clone(), "id".to_owned())).unwrap();
+        let i64_ty = TyKey::new_as_base("I64".to_owned()).get_val(&ctx).unwrap();
+        assert_eq!(id.name, "id");
+        assert_eq!(id.ty, Ty::new_or_get_as_fn_ty(&mut ctx, vec![i64_ty.clone()], i64_ty.clone()));
+        let x_qual = top.pushed(Scope::Abs("id".to_owned()));
+        let x = ctx.var_store.get(&VarKey::new(x_qual, "x".to_owned())).unwrap();
+        assert_eq!(x.name, "x");
+        assert_eq!(x.ty, i64_ty.clone());
+        let abs = ctx.bind_store.get(&id.to_key()).unwrap();
+        assert_eq!(abs.args[0], x);
+        assert_eq!(abs.expr.as_ref(), &Expr::Var(x));
+        assert_eq!(abs.expr.ty(), i64_ty);
+    }
+}
