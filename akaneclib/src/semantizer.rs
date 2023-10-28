@@ -74,13 +74,13 @@ fn visit_fn_def(ctx: &mut Context, fn_def_ast: &FnDefAst) -> Result<Rc<Var>, Vec
     let arg_names = &fn_def_ast.left_fn_def.args;
     let fn_ty =
         if let Some(ty_annot) = &fn_def_ast.ty_annot {
-            match visit_with_errors!(visit_ty_expr(ctx, ty_annot), errs) {
+            match visit_with_errors!(visit_ty(ctx, ty_annot), errs) {
                 Ok(ty) => ty,
                 Err(_) => return Err(errs),
             }
         }
         else {
-            let i64_ty = try_with_errors!(TyKey::new_as_base("i64".to_owned()).get_val(ctx), fn_def_ast.left_fn_def, errs);
+            let i64_ty = try_with_errors!(TyKey::new_as_base("I64".to_owned()).get_val(ctx), fn_def_ast.left_fn_def, errs);
             let fn_in_tys = vec![i64_ty.clone(); arg_names.len()];
             let fn_out_ty = i64_ty.clone();
             Ty::new_or_get_as_fn_ty(ctx, fn_in_tys, fn_out_ty)
@@ -115,32 +115,20 @@ fn visit_fn_def(ctx: &mut Context, fn_def_ast: &FnDefAst) -> Result<Rc<Var>, Vec
     Ok(var)
 }
 
-fn visit_ty_expr(ctx: &mut Context, ty_expr_ast: &TyExprAst) -> Result<Rc<Ty>, Vec<Error>> {
-    Ok(match &ty_expr_ast.expr_enum {
-        TyExprEnum::Arrow(ty_arrow) =>
-            Rc::new(Ty::Arrow(visit_ty_arrow(ctx, ty_arrow)?)),
-        TyExprEnum::Ident(ty_ident) =>
-            if is_base(&ty_ident.name) {
-                Rc::new(Ty::Base(visit_ty_ident_as_base(ctx, ty_ident)?))
-            }
-            else {
-                Rc::new(Ty::TVar(visit_ty_ident_as_tvar(ctx, ty_ident)?))
-            },
+fn visit_ty(ctx: &mut Context, ty_ast: &TyAst) -> Result<Rc<Ty>, Vec<Error>> {
+    Ok(match &ty_ast.ty_enum {
+        TyEnum::Arrow(arrow) =>
+            Rc::new(Ty::Arrow(visit_arrow(ctx, arrow)?)),
+        TyEnum::Base(base) =>
+            Rc::new(Ty::Base(visit_base(ctx, base)?)),
     })
 }
 
-fn is_base(name: &str) -> bool {
-    [
-        "i64",
-    ].contains(&name) ||
-    name.chars().next().map_or(false, char::is_uppercase)
-}
-
-fn visit_ty_arrow(ctx: &mut Context, ty_arrow_ast: &TyArrowAst) -> Result<Rc<Arrow>, Vec<Error>> {
+fn visit_arrow(ctx: &mut Context, arrow_ast: &ArrowAst) -> Result<Rc<Arrow>, Vec<Error>> {
     let mut errs = Vec::new();
     match (
-        visit_with_errors!(visit_ty_expr(ctx, &ty_arrow_ast.lhs), errs),
-        visit_with_errors!(visit_ty_expr(ctx, &ty_arrow_ast.rhs), errs),
+        visit_with_errors!(visit_ty(ctx, &arrow_ast.lhs), errs),
+        visit_with_errors!(visit_ty(ctx, &arrow_ast.rhs), errs),
     ) {
         (Ok(in_ty), Ok(out_ty)) =>
             Ok(Arrow::new_or_get(ctx, in_ty, out_ty)),
@@ -148,12 +136,7 @@ fn visit_ty_arrow(ctx: &mut Context, ty_arrow_ast: &TyArrowAst) -> Result<Rc<Arr
     }
 }
 
-fn visit_ty_ident_as_tvar(ctx: &mut Context, ty_ident_ast: &TyIdentAst) -> Result<Rc<TVar>, Vec<Error>> {
-    let top = Qual::top(ctx);
-    Ok(TVar::new_or_get(ctx, top, ty_ident_ast.name.clone()))
-}
-
-fn visit_ty_ident_as_base(ctx: &mut Context, ty_ident_ast: &TyIdentAst) -> Result<Rc<Base>, Vec<Error>> {
+fn visit_base(ctx: &mut Context, ty_ident_ast: &BaseAst) -> Result<Rc<Base>, Vec<Error>> {
     Ok(Base::new_or_get(ctx, ty_ident_ast.name.clone()))
 }
 
@@ -161,8 +144,8 @@ fn visit_expr(ctx: &mut Context, expr_ast: &ExprAst) -> Result<Rc<Expr>, Vec<Err
     Ok(match &expr_ast.expr_enum {
         ExprEnum::App(app_ast) =>
             Rc::new(Expr::App(visit_app(ctx, app_ast)?)),
-        ExprEnum::Ident(ident_ast) =>
-            Rc::new(Expr::Var(visit_ident(ctx, ident_ast)?)),
+        ExprEnum::Var(var_ast) =>
+            Rc::new(Expr::Var(visit_var(ctx, var_ast)?)),
         ExprEnum::Num(num_ast) =>
             Rc::new(Expr::Cn(visit_num(ctx, num_ast)?)),
     })
@@ -180,18 +163,18 @@ fn visit_app(ctx: &mut Context, app_ast: &AppAst) -> Result<Rc<App>, Vec<Error>>
     }
 }
 
-fn visit_ident(ctx: &mut Context, ident_ast: &IdentAst) -> Result<Rc<Var>, Vec<Error>> {
+fn visit_var(ctx: &mut Context, var_ast: &VarAst) -> Result<Rc<Var>, Vec<Error>> {
     ctx.find_with_qual(|ctx, qual|
-        VarKey::new(qual.to_key(), ident_ast.name.clone()).get_val(ctx).ok()
+        VarKey::new(qual.to_key(), var_ast.name.clone()).get_val(ctx).ok()
     )
     .ok_or_else(|| {
         let mut errs = Vec::new();
-        anyhow_ast_with_line!(errs, ident_ast, "Unknown variable: `{}`{}", (ident_ast.name))
+        anyhow_ast_with_line!(errs, var_ast, "Unknown variable: `{}`{}", (var_ast.name))
     })
 }
 
 fn visit_num(ctx: &mut Context, num_ast: &NumAst) -> Result<Rc<Cn>, Vec<Error>> {
     let mut errs = Vec::new();
-    let i64_ty = try_with_errors!(TyKey::new_as_base("i64".to_owned()).get_val(ctx), num_ast, errs);
+    let i64_ty = try_with_errors!(TyKey::new_as_base("I64".to_owned()).get_val(ctx), num_ast, errs);
     Ok(Cn::new_or_get(ctx, num_ast.value.clone(), i64_ty))
 }

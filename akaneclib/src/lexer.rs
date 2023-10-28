@@ -121,8 +121,11 @@ fn assume_keyword_or_ident<'input>(chars: &mut Peekable<CharInfos<'input>>) -> R
         else if is_fn(&token) {
             Ok(Some(TokenInfo(Token::Fn, info)))
         }
+        else if is_upper_ident(&token) {
+            Ok(Some(TokenInfo(Token::UpperIdent(token), info)))
+        }
         else {
-            Ok(Some(TokenInfo(Token::Ident(token), info)))
+            Ok(Some(TokenInfo(Token::LowerIdent(token), info)))
         }
     }
     else {
@@ -248,6 +251,10 @@ fn is_r_paren(c: &char) -> bool {
     *c == ')'
 }
 
+fn is_upper_ident(s: &str) -> bool {
+    s.chars().next().unwrap().is_uppercase()
+}
+
 fn is_ty(s: &str) -> bool {
     s == "ty"
 }
@@ -306,11 +313,21 @@ mod tests {
     }
 
     #[test]
-    fn test_lex_ident() {
-        assert_eq!(lex_to_tokens("a"), &[Token::Ident("a".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("a0"), &[Token::Ident("a0".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("a_0"), &[Token::Ident("a_0".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("a0_"), &[Token::Ident("a0_".to_string()), Token::Eof]);
+    fn test_lex_upper_ident() {
+        assert_eq!(lex_to_tokens("A"), &[Token::UpperIdent("A".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("A0"), &[Token::UpperIdent("A0".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("A_0"), &[Token::UpperIdent("A_0".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("A0_"), &[Token::UpperIdent("A0_".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("Aa"), &[Token::UpperIdent("Aa".to_string()), Token::Eof]);
+    }
+
+    #[test]
+    fn test_lex_lower_ident() {
+        assert_eq!(lex_to_tokens("a"), &[Token::LowerIdent("a".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("a0"), &[Token::LowerIdent("a0".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("a_0"), &[Token::LowerIdent("a_0".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("a0_"), &[Token::LowerIdent("a0_".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("aa"), &[Token::LowerIdent("aa".to_string()), Token::Eof]);
     }
 
     #[test]
@@ -364,7 +381,7 @@ mod tests {
     fn test_lex_tokens() {
         assert_eq!(lex_to_tokens("fn a = 0;"), &[
             Token::Fn,
-            Token::Ident("a".to_string()),
+            Token::LowerIdent("a".to_string()),
             Token::Equal,
             Token::Num("0".to_string()),
             Token::Semicolon,

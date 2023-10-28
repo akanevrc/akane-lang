@@ -95,8 +95,8 @@ fn assume_fn_def<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'i
     let mut ty_info = None;
     if let Some(info) = assume_simple_token(tokens, Token::Ty)? {
         ty_info = Some(info);
-        if let Some(ty_expr) = assume_ty_expr(tokens)? {
-            ty_annot = Some(ty_expr);
+        if let Some(ty) = assume_ty(tokens)? {
+            ty_annot = Some(ty);
         }
     }
     if let Some(fn_info) = assume_simple_token(tokens, Token::Fn)? {
@@ -123,18 +123,18 @@ fn assume_fn_def<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'i
     }
 }
 
-fn assume_ty_expr<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyExprAst<'input>>>> {
-    let mut exprs = Vec::new();
+fn assume_ty<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyAst<'input>>>> {
+    let mut tys = Vec::new();
     if let Some(lhs) = assume_ty_lhs(tokens)? {
-        exprs.push(lhs);
+        tys.push(lhs);
         while let Some(rhs) = assume_ty_rhs(tokens)? {
-            exprs.push(rhs);
+            tys.push(rhs);
         }
-        let mut expr_iter = exprs.into_iter().rev();
-        let mut rhs = expr_iter.next().unwrap();
-        for lhs in expr_iter {
+        let mut ty_iter = tys.into_iter().rev();
+        let mut rhs = ty_iter.next().unwrap();
+        for lhs in ty_iter {
             let extended = lhs.str_info.extend(&rhs.str_info);
-            rhs = ty_arrow_expr_ast(ty_arrow_ast(lhs, rhs, extended.clone()), extended);
+            rhs = arrow_ty_ast(arrow_ast(lhs, rhs, extended.clone()), extended);
         }
         Ok(Some(rhs))
     }
@@ -143,7 +143,7 @@ fn assume_ty_expr<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'
     }
 }
 
-fn assume_ty_lhs<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyExprAst<'input>>>> {
+fn assume_ty_lhs<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyAst<'input>>>> {
     if let Some(term) = assume_ty_term(tokens)? {
         Ok(Some(term))
     }
@@ -152,7 +152,7 @@ fn assume_ty_lhs<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'i
     }
 }
 
-fn assume_ty_rhs<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyExprAst<'input>>>> {
+fn assume_ty_rhs<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyAst<'input>>>> {
     if let Some(TokenInfo(Token::Arrow, _)) = tokens.peek() {
         tokens.next();
         if let Some(term) = assume_ty_term(tokens)? {
@@ -165,7 +165,7 @@ fn assume_ty_rhs<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'i
     }
 }
 
-fn assume_ty_term<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyExprAst<'input>>>> {
+fn assume_ty_term<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyAst<'input>>>> {
     if let Some(factor) = assume_ty_factor(tokens)? {
         Ok(Some(factor))
     }
@@ -174,25 +174,25 @@ fn assume_ty_term<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'
     }
 }
 
-fn assume_ty_factor<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyExprAst<'input>>>> {
-    if let Some(expr) = assume_ty_paren(tokens)? {
-        Ok(Some(expr))
+fn assume_ty_factor<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyAst<'input>>>> {
+    if let Some(ty) = assume_ty_paren(tokens)? {
+        Ok(Some(ty))
     }
-    else if let Some(ident) = assume_ty_ident(tokens)? {
-        Ok(Some(ty_ident_expr_ast(ident.clone(), ident.str_info.clone())))
+    else if let Some(base) = assume_base(tokens)? {
+        Ok(Some(base_ty_ast(base.clone(), base.str_info.clone())))
     }
     else {
         Ok(None)
     }
 }
 
-fn assume_ty_paren<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyExprAst<'input>>>>  {
+fn assume_ty_paren<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<TyAst<'input>>>>  {
     if let Some(TokenInfo(Token::LParen, _)) = tokens.peek() {
         tokens.next();
-        if let Some(expr) = assume_ty_expr(tokens)? {
+        if let Some(ty) = assume_ty(tokens)? {
             if let Some(TokenInfo(Token::RParen, _)) = tokens.peek() {
                 tokens.next();
-                return Ok(Some(expr))
+                return Ok(Some(ty))
             }
             bail_tokens_with_line!(tokens, "`)` required:{}")
         }
@@ -203,12 +203,12 @@ fn assume_ty_paren<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<
     }
 }
 
-fn assume_ty_ident<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<TyIdentAst<'input>>> {
-    if let Some(TokenInfo(Token::Ident(name), info)) = tokens.peek() {
+fn assume_base<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<BaseAst<'input>>> {
+    if let Some(TokenInfo(Token::UpperIdent(name), info)) = tokens.peek() {
         let name = name.clone();
         let info = info.clone();
         tokens.next();
-        Ok(Some(ty_ident_ast(name, info)))
+        Ok(Some(base_ast(name, info)))
     }
     else {
         Ok(None)
@@ -216,22 +216,22 @@ fn assume_ty_ident<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<
 }
 
 fn assume_left_fn_def<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<LeftFnDefAst<'input>>> {
-    if let Some(ident) = assume_ident(tokens)? {
+    if let Some(var) = assume_var(tokens)? {
         let mut args = Vec::new();
         loop {
-            if let Some(arg) = assume_ident(tokens)? {
+            if let Some(arg) = assume_var(tokens)? {
                 args.push(arg);
                 continue;
             }
             let extended =
                 if let Some(last) = args.last() {
-                    ident.str_info.extend(&last.str_info)
+                    var.str_info.extend(&last.str_info)
                 }
                 else {
-                    ident.str_info
+                    var.str_info
                 };
             let names = args.into_iter().map(|arg| arg.name).collect();
-            return Ok(Some(left_fn_def_ast(ident.name, names, extended)));
+            return Ok(Some(left_fn_def_ast(var.name, names, extended)));
         }
     }
     else {
@@ -319,8 +319,8 @@ fn assume_factor<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'i
     if let Some(expr) = assume_paren(tokens)? {
         Ok(Some(expr))
     }
-    else if let Some(ident) = assume_ident(tokens)? {
-        Ok(Some(ident_expr_ast(ident.clone(), ident.str_info)))
+    else if let Some(var) = assume_var(tokens)? {
+        Ok(Some(var_expr_ast(var.clone(), var.str_info)))
     }
     else if let Some(num) = assume_num(tokens)? {
         Ok(Some(num_expr_ast(num.clone(), num.str_info)))
@@ -347,12 +347,12 @@ fn assume_paren<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'in
     }
 }
 
-fn assume_ident<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<IdentAst<'input>>> {
-    if let Some(TokenInfo(Token::Ident(name), info)) = tokens.peek() {
+fn assume_var<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<VarAst<'input>>> {
+    if let Some(TokenInfo(Token::LowerIdent(name), info)) = tokens.peek() {
         let name = name.clone();
         let info = info.clone();
         tokens.next();
-        Ok(Some(ident_ast(name, info)))
+        Ok(Some(var_ast(name, info)))
     }
     else {
         Ok(None)
@@ -433,24 +433,24 @@ mod tests {
         data::top_fn_def_ast(fn_def_ast)
     }
 
-    fn ty_fn_def_ast<'input>(ty_annot: Rc<TyExprAst<'input>>, left_fn_def: LeftFnDefAst<'input>, expr: Rc<ExprAst<'input>>) -> FnDefAst<'input> {
+    fn ty_fn_def_ast<'input>(ty_annot: Rc<TyAst<'input>>, left_fn_def: LeftFnDefAst<'input>, expr: Rc<ExprAst<'input>>) -> FnDefAst<'input> {
         data::fn_def_ast(Some(ty_annot), left_fn_def, expr, dummy_info())
     }
 
-    fn ty_arrow_expr_ast<'input>(ty_arrow: TyArrowAst<'input>) -> Rc<TyExprAst<'input>> {
-        data::ty_arrow_expr_ast(ty_arrow, dummy_info())
+    fn arrow_ty_ast<'input>(arrow: ArrowAst<'input>) -> Rc<TyAst<'input>> {
+        data::arrow_ty_ast(arrow, dummy_info())
     }
 
-    fn ty_ident_expr_ast<'input>(ty_ident: TyIdentAst<'input>) -> Rc<TyExprAst<'input>> {
-        data::ty_ident_expr_ast(ty_ident, dummy_info())
+    fn base_ty_ast<'input>(base: BaseAst<'input>) -> Rc<TyAst<'input>> {
+        data::base_ty_ast(base, dummy_info())
     }
 
-    fn ty_arrow_ast<'input>(lhs: Rc<TyExprAst<'input>>, rhs: Rc<TyExprAst<'input>>) -> TyArrowAst<'input> {
-        data::ty_arrow_ast(lhs, rhs, dummy_info())
+    fn arrow_ast<'input>(lhs: Rc<TyAst<'input>>, rhs: Rc<TyAst<'input>>) -> ArrowAst<'input> {
+        data::arrow_ast(lhs, rhs, dummy_info())
     }
 
-    fn ty_ident_ast<'input>(name: &'input str) -> TyIdentAst<'input> {
-        data::ty_ident_ast(name.to_owned(), dummy_info())
+    fn base_ast<'input>(name: &'input str) -> BaseAst<'input> {
+        data::base_ast(name.to_owned(), dummy_info())
     }
 
     fn fn_def_ast<'input>(left_fn_def: LeftFnDefAst<'input>, expr: Rc<ExprAst<'input>>) -> FnDefAst<'input> {
@@ -465,8 +465,8 @@ mod tests {
         data::app_expr_ast(app_ast, dummy_info())
     }
 
-    fn ident_expr_ast<'input>(ident_ast: IdentAst<'input>) -> Rc<ExprAst<'input>> {
-        data::ident_expr_ast(ident_ast, dummy_info())
+    fn var_expr_ast<'input>(var_ast: VarAst<'input>) -> Rc<ExprAst<'input>> {
+        data::var_expr_ast(var_ast, dummy_info())
     }
 
     fn num_expr_ast<'input>(num_ast: NumAst<'input>) -> Rc<ExprAst<'input>> {
@@ -485,8 +485,8 @@ mod tests {
         data::infix_op_ast(op_code.to_owned(), lhs, rhs, dummy_info(), dummy_info(), dummy_info())
     }
 
-    fn ident_ast<'input>(name: &'input str) -> IdentAst<'input> {
-        data::ident_ast(name.to_owned(), dummy_info())
+    fn var_ast<'input>(name: &'input str) -> VarAst<'input> {
+        data::var_ast(name.to_owned(), dummy_info())
     }
 
     fn num_ast<'input>(value: &'input str) -> NumAst<'input> {
@@ -528,7 +528,7 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["a"]),
-                    ident_expr_ast(ident_ast("a")),
+                    var_expr_ast(var_ast("a")),
                 ),
             ),
         ]);
@@ -536,7 +536,7 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &[]),
-                    ident_expr_ast(ident_ast("f")),
+                    var_expr_ast(var_ast("f")),
                 ),
             ),
         ]);
@@ -570,8 +570,8 @@ mod tests {
                     left_fn_def_ast("f", &["g", "a"]),
                     app_expr_ast(
                         app_ast(
-                            ident_expr_ast(ident_ast("g")),
-                            ident_expr_ast(ident_ast("a")),
+                            var_expr_ast(var_ast("g")),
+                            var_expr_ast(var_ast("a")),
                         ),
                     ),
                 ),
@@ -585,11 +585,11 @@ mod tests {
                         app_ast(
                             app_expr_ast(
                                 app_ast(
-                                    ident_expr_ast(ident_ast("g")),
-                                    ident_expr_ast(ident_ast("a")),
+                                    var_expr_ast(var_ast("g")),
+                                    var_expr_ast(var_ast("a")),
                                 ),
                             ),
-                            ident_expr_ast(ident_ast("b")),
+                            var_expr_ast(var_ast("b")),
                         ),
                     ),
                 ),
@@ -606,7 +606,7 @@ mod tests {
                     app_expr_ast(
                         infix_op_ast(
                             "add",
-                            ident_expr_ast(ident_ast("a")),
+                            var_expr_ast(var_ast("a")),
                             num_expr_ast(num_ast("1")),
                         ),
                     ),
@@ -625,19 +625,19 @@ mod tests {
                                     "add",
                                     app_expr_ast(
                                         app_ast(
-                                            ident_expr_ast(ident_ast("g")),
-                                            ident_expr_ast(ident_ast("a")),
+                                            var_expr_ast(var_ast("g")),
+                                            var_expr_ast(var_ast("a")),
                                         ),
                                     ),
                                     app_expr_ast(
                                         app_ast(
-                                            ident_expr_ast(ident_ast("g")),
-                                            ident_expr_ast(ident_ast("b")),
+                                            var_expr_ast(var_ast("g")),
+                                            var_expr_ast(var_ast("b")),
                                         ),
                                     ),
                                 ),
                             ),
-                            ident_expr_ast(ident_ast("c")),
+                            var_expr_ast(var_ast("c")),
                         ),
                     ),
                 ),
@@ -657,11 +657,11 @@ mod tests {
                             app_expr_ast(
                                 infix_op_ast(
                                     "mul",
-                                    ident_expr_ast(ident_ast("a")),
-                                    ident_expr_ast(ident_ast("b")),
+                                    var_expr_ast(var_ast("a")),
+                                    var_expr_ast(var_ast("b")),
                                 ),
                             ),
-                            ident_expr_ast(ident_ast("c")),
+                            var_expr_ast(var_ast("c")),
                         ),
                     ),
                 ),
@@ -674,12 +674,12 @@ mod tests {
                     app_expr_ast(
                         infix_op_ast(
                             "add",
-                            ident_expr_ast(ident_ast("a")),
+                            var_expr_ast(var_ast("a")),
                             app_expr_ast(
                                 infix_op_ast(
                                     "mul",
-                                    ident_expr_ast(ident_ast("b")),
-                                    ident_expr_ast(ident_ast("c")),
+                                    var_expr_ast(var_ast("b")),
+                                    var_expr_ast(var_ast("c")),
                                 ),
                             ),
                         ),
@@ -698,12 +698,12 @@ mod tests {
                     app_expr_ast(
                         infix_op_ast(
                             "pipelineL",
-                            ident_expr_ast(ident_ast("a")),
+                            var_expr_ast(var_ast("a")),
                             app_expr_ast(
                                 infix_op_ast(
                                     "pipelineL",
-                                    ident_expr_ast(ident_ast("b")),
-                                    ident_expr_ast(ident_ast("c")),
+                                    var_expr_ast(var_ast("b")),
+                                    var_expr_ast(var_ast("c")),
                                 ),
                             ),
                         ),
@@ -725,11 +725,11 @@ mod tests {
                             app_expr_ast(
                                 infix_op_ast(
                                     "add",
-                                    ident_expr_ast(ident_ast("a")),
-                                    ident_expr_ast(ident_ast("b")),
+                                    var_expr_ast(var_ast("a")),
+                                    var_expr_ast(var_ast("b")),
                                 ),
                             ),
-                            ident_expr_ast(ident_ast("c")),
+                            var_expr_ast(var_ast("c")),
                         ),
                     ),
                 ),
@@ -742,12 +742,12 @@ mod tests {
                     app_expr_ast(
                         infix_op_ast(
                             "add",
-                            ident_expr_ast(ident_ast("a")),
+                            var_expr_ast(var_ast("a")),
                             app_expr_ast(
                                 infix_op_ast(
                                     "add",
-                                    ident_expr_ast(ident_ast("b")),
-                                    ident_expr_ast(ident_ast("c")),
+                                    var_expr_ast(var_ast("b")),
+                                    var_expr_ast(var_ast("c")),
                                 ),
                             ),
                         ),
@@ -782,7 +782,7 @@ mod tests {
                             app_expr_ast(
                                 prefix_op_ast(
                                     "negate",
-                                    ident_expr_ast(ident_ast("a")),
+                                    var_expr_ast(var_ast("a")),
                                 ),
                             ),
                             num_expr_ast(num_ast("1")),
@@ -795,13 +795,13 @@ mod tests {
 
     #[test]
     fn test_parse_ty_annot() {
-        assert_eq!(parse("ty i64 -> i64 fn f a = 0"), &[
+        assert_eq!(parse("ty I64 -> I64 fn f a = 0"), &[
             top_fn_def_ast(
                 ty_fn_def_ast(
-                    ty_arrow_expr_ast(
-                        ty_arrow_ast(
-                            ty_ident_expr_ast(ty_ident_ast("i64")),
-                            ty_ident_expr_ast(ty_ident_ast("i64")),
+                    arrow_ty_ast(
+                        arrow_ast(
+                            base_ty_ast(base_ast("I64")),
+                            base_ty_ast(base_ast("I64")),
                         ),
                     ),
                     left_fn_def_ast("f", &["a"]),
@@ -809,21 +809,21 @@ mod tests {
                 ),
             ),
         ]);
-        assert_eq!(parse("ty (i64 -> i64) -> i64 -> i64 fn f a b = a b"), &[
+        assert_eq!(parse("ty (I64 -> I64) -> I64 -> I64 fn f a b = a b"), &[
             top_fn_def_ast(
                 ty_fn_def_ast(
-                    ty_arrow_expr_ast(
-                        ty_arrow_ast(
-                            ty_arrow_expr_ast(
-                                ty_arrow_ast(
-                                    ty_ident_expr_ast(ty_ident_ast("i64")),
-                                    ty_ident_expr_ast(ty_ident_ast("i64")),
+                    arrow_ty_ast(
+                        arrow_ast(
+                            arrow_ty_ast(
+                                arrow_ast(
+                                    base_ty_ast(base_ast("I64")),
+                                    base_ty_ast(base_ast("I64")),
                                 ),
                             ),
-                            ty_arrow_expr_ast(
-                                ty_arrow_ast(
-                                    ty_ident_expr_ast(ty_ident_ast("i64")),
-                                    ty_ident_expr_ast(ty_ident_ast("i64")),
+                            arrow_ty_ast(
+                                arrow_ast(
+                                    base_ty_ast(base_ast("I64")),
+                                    base_ty_ast(base_ast("I64")),
                                 ),
                             ),
                         ),
@@ -831,8 +831,8 @@ mod tests {
                     left_fn_def_ast("f", &["a", "b"]),
                     app_expr_ast(
                         app_ast(
-                            ident_expr_ast(ident_ast("a")),
-                            ident_expr_ast(ident_ast("b")),
+                            var_expr_ast(var_ast("a")),
+                            var_expr_ast(var_ast("b")),
                         ),
                     ),
                 ),

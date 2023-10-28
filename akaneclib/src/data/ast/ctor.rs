@@ -5,24 +5,24 @@ pub fn top_fn_def_ast<'input>(fn_def_ast: FnDefAst<'input>) -> TopDefEnum<'input
     TopDefEnum::FnDef(fn_def_ast)
 }
 
-pub fn fn_def_ast<'input>(ty_annot: Option<Rc<TyExprAst<'input>>>, left_fn_def: LeftFnDefAst<'input>, expr: Rc<ExprAst<'input>>, str_info: StrInfo<'input>) -> FnDefAst<'input> {
+pub fn fn_def_ast<'input>(ty_annot: Option<Rc<TyAst<'input>>>, left_fn_def: LeftFnDefAst<'input>, expr: Rc<ExprAst<'input>>, str_info: StrInfo<'input>) -> FnDefAst<'input> {
     FnDefAst { ty_annot, left_fn_def, expr, str_info }
 }
 
-pub fn ty_arrow_expr_ast<'input>(ty_arrow: TyArrowAst<'input>, str_info: StrInfo<'input>) -> Rc<TyExprAst<'input>> {
-    Rc::new(TyExprAst { expr_enum: TyExprEnum::Arrow(ty_arrow), str_info })
+pub fn arrow_ty_ast<'input>(arrow: ArrowAst<'input>, str_info: StrInfo<'input>) -> Rc<TyAst<'input>> {
+    Rc::new(TyAst { ty_enum: TyEnum::Arrow(arrow), str_info })
 }
 
-pub fn ty_ident_expr_ast<'input>(ty_ident: TyIdentAst<'input>, str_info: StrInfo<'input>) -> Rc<TyExprAst<'input>> {
-    Rc::new(TyExprAst { expr_enum: TyExprEnum::Ident(ty_ident), str_info })
+pub fn base_ty_ast<'input>(base: BaseAst<'input>, str_info: StrInfo<'input>) -> Rc<TyAst<'input>> {
+    Rc::new(TyAst { ty_enum: TyEnum::Base(base), str_info })
 }
 
-pub fn ty_arrow_ast<'input>(lhs: Rc<TyExprAst<'input>>, rhs: Rc<TyExprAst<'input>>, str_info: StrInfo<'input>) -> TyArrowAst<'input> {
-    TyArrowAst { lhs, rhs, str_info }
+pub fn arrow_ast<'input>(lhs: Rc<TyAst<'input>>, rhs: Rc<TyAst<'input>>, str_info: StrInfo<'input>) -> ArrowAst<'input> {
+    ArrowAst { lhs, rhs, str_info }
 }
 
-pub fn ty_ident_ast<'input>(name: String, str_info: StrInfo<'input>) -> TyIdentAst<'input> {
-    TyIdentAst { name, str_info }
+pub fn base_ast<'input>(name: String, str_info: StrInfo<'input>) -> BaseAst<'input> {
+    BaseAst { name, str_info }
 }
 
 pub fn left_fn_def_ast<'input>(name: String, args: Vec<String>, str_info: StrInfo<'input>) -> LeftFnDefAst<'input> {
@@ -33,8 +33,8 @@ pub fn app_expr_ast<'input>(app_ast: AppAst<'input>, str_info: StrInfo<'input>) 
     Rc::new(ExprAst { expr_enum: ExprEnum::App(app_ast), str_info })
 }
 
-pub fn ident_expr_ast<'input>(ident_ast: IdentAst<'input>, str_info: StrInfo<'input>) -> Rc<ExprAst<'input>> {
-    Rc::new(ExprAst { expr_enum: ExprEnum::Ident(ident_ast), str_info })
+pub fn var_expr_ast<'input>(var_ast: VarAst<'input>, str_info: StrInfo<'input>) -> Rc<ExprAst<'input>> {
+    Rc::new(ExprAst { expr_enum: ExprEnum::Var(var_ast), str_info })
 }
 
 pub fn num_expr_ast<'input>(num_ast: NumAst<'input>, str_info: StrInfo<'input>) -> Rc<ExprAst<'input>> {
@@ -47,7 +47,7 @@ pub fn app_ast<'input>(fn_expr: Rc<ExprAst<'input>>, arg_expr: Rc<ExprAst<'input
 
 pub fn prefix_op_ast<'input>(op_code: String, rhs: Rc<ExprAst<'input>>, str_info: StrInfo<'input>, op_code_info: StrInfo<'input>) -> AppAst<'input> {
     app_ast(
-        ident_expr_ast(ident_ast(op_code.clone(), op_code_info.clone()), op_code_info),
+        var_expr_ast(var_ast(op_code.clone(), op_code_info.clone()), op_code_info),
         rhs,
         str_info,
     )
@@ -57,7 +57,7 @@ pub fn infix_op_ast<'input>(op_code: String, lhs: Rc<ExprAst<'input>>, rhs: Rc<E
     app_ast(
         app_expr_ast(
             app_ast(
-                ident_expr_ast(ident_ast(op_code, op_code_info.clone()), op_code_info),
+                var_expr_ast(var_ast(op_code, op_code_info.clone()), op_code_info),
                 lhs,
                 lhs_info.clone(),
             ),
@@ -68,8 +68,8 @@ pub fn infix_op_ast<'input>(op_code: String, lhs: Rc<ExprAst<'input>>, rhs: Rc<E
     )
 }
 
-pub fn ident_ast<'input>(name: String, str_info: StrInfo<'input>) -> IdentAst<'input> {
-    IdentAst { name, str_info }
+pub fn var_ast<'input>(name: String, str_info: StrInfo<'input>) -> VarAst<'input> {
+    VarAst { name, str_info }
 }
 
 pub fn num_ast<'input>(value: String, str_info: StrInfo<'input>) -> NumAst<'input> {

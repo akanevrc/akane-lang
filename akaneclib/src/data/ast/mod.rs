@@ -12,33 +12,33 @@ pub enum TopDefEnum<'input> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FnDefAst<'input> {
-    pub ty_annot: Option<Rc<TyExprAst<'input>>>,
+    pub ty_annot: Option<Rc<TyAst<'input>>>,
     pub left_fn_def: LeftFnDefAst<'input>,
     pub expr: Rc<ExprAst<'input>>,
     pub str_info: StrInfo<'input>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct TyExprAst<'input> {
-    pub expr_enum: TyExprEnum<'input>,
+pub struct TyAst<'input> {
+    pub ty_enum: TyEnum<'input>,
     pub str_info: StrInfo<'input>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum TyExprEnum<'input> {
-    Arrow(TyArrowAst<'input>),
-    Ident(TyIdentAst<'input>),
+pub enum TyEnum<'input> {
+    Arrow(ArrowAst<'input>),
+    Base(BaseAst<'input>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct TyArrowAst<'input> {
-    pub lhs: Rc<TyExprAst<'input>>,
-    pub rhs: Rc<TyExprAst<'input>>,
+pub struct ArrowAst<'input> {
+    pub lhs: Rc<TyAst<'input>>,
+    pub rhs: Rc<TyAst<'input>>,
     pub str_info: StrInfo<'input>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct TyIdentAst<'input> {
+pub struct BaseAst<'input> {
     pub name: String,
     pub str_info: StrInfo<'input>,
 }
@@ -59,7 +59,7 @@ pub struct ExprAst<'input> {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExprEnum<'input> {
     App(AppAst<'input>),
-    Ident(IdentAst<'input>),
+    Var(VarAst<'input>),
     Num(NumAst<'input>),
 }
 
@@ -71,7 +71,7 @@ pub struct AppAst<'input> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct IdentAst<'input> {
+pub struct VarAst<'input> {
     pub name: String,
     pub str_info: StrInfo<'input>,
 }
