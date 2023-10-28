@@ -41,6 +41,7 @@ impl Context {
             bind_store: GenericStore::new(),
         };
         Qual::top(&mut ctx);
+        Ty::new_or_get_as_base(&mut ctx, "I64".to_owned());
         ctx
     }
 
