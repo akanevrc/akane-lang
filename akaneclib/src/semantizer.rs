@@ -86,11 +86,12 @@ fn visit_fn_def(ctx: &mut Context, fn_def_ast: &FnDefAst) -> Result<Rc<Var>, Vec
             Ty::new_or_get_as_fn_ty(ctx, fn_in_tys, fn_out_ty)
         };
     let var =
-        match Var::new(ctx, qual, name.clone(), fn_ty.clone()) {
+        match Var::new(ctx, qual, name.clone()) {
             Ok(var) => var,
             Err(_) =>
                 bail_ast_with_line!(errs, fn_def_ast.left_fn_def, "Duplicate function definitions: `{}`{}", name),
         };
+    var.set_ty(ctx, fn_ty.clone()).unwrap();
     let qual = try_with_errors!(ctx.push_scope_into_qual_stack(Scope::Abs(name.clone())).get_val(ctx), fn_def_ast.left_fn_def, errs);
     let (arg_tys, ret_ty) = fn_ty.to_arg_and_ret_tys();
     if arg_tys.len() != arg_names.len() {
@@ -100,13 +101,17 @@ fn visit_fn_def(ctx: &mut Context, fn_def_ast: &FnDefAst) -> Result<Rc<Var>, Vec
         try_with_errors!(
             arg_names.iter()
             .zip(arg_tys)
-            .map(|(name, arg_ty)| Ok(Var::new(ctx, qual.clone(), name.clone(), arg_ty.clone())?))
+            .map(|(name, arg_ty)| {
+                let var = Var::new(ctx, qual.clone(), name.clone())?;
+                var.set_ty(ctx, arg_ty.clone()).unwrap();
+                Ok(var)
+            })
             .collect::<Result<Vec<_>>>(),
             fn_def_ast.left_fn_def,
             errs
         );
     let expr = visit_expr(ctx, &fn_def_ast.expr)?;
-    if ret_ty != expr.ty() {
+    if !matches!(expr.ty(ctx), Ok(ty) if ty == ret_ty) {
         bail_ast_with_line!(errs, fn_def_ast.left_fn_def, "Defferent type between type annotation and function body: `{}`{}", name);
     }
     let abs = Abs::new(ctx, args, expr);
@@ -174,9 +179,7 @@ fn visit_var(ctx: &mut Context, var_ast: &VarAst) -> Result<Rc<Var>, Vec<Error>>
 }
 
 fn visit_num(ctx: &mut Context, num_ast: &NumAst) -> Result<Rc<Cn>, Vec<Error>> {
-    let mut errs = Vec::new();
-    let i64_ty = try_with_errors!(TyKey::new_as_base("I64".to_owned()).get_val(ctx), num_ast, errs);
-    Ok(Cn::new_or_get(ctx, num_ast.value.clone(), i64_ty))
+    Ok(Cn::new_or_get(ctx, num_ast.value.clone()))
 }
 
 #[cfg(test)]
@@ -202,14 +205,14 @@ mod tests {
         let id = ctx.var_store.get(&VarKey::new(top.clone(), "id".to_owned())).unwrap();
         let i64_ty = TyKey::new_as_base("I64".to_owned()).get_val(&ctx).unwrap();
         assert_eq!(id.name, "id");
-        assert_eq!(id.ty, Ty::new_or_get_as_fn_ty(&mut ctx, vec![i64_ty.clone()], i64_ty.clone()));
+        assert_eq!(id.ty(&ctx).unwrap(), Ty::new_or_get_as_fn_ty(&mut ctx, vec![i64_ty.clone()], i64_ty.clone()));
         let x_qual = top.pushed(Scope::Abs("id".to_owned()));
         let x = ctx.var_store.get(&VarKey::new(x_qual, "x".to_owned())).unwrap();
         assert_eq!(x.name, "x");
-        assert_eq!(x.ty, i64_ty.clone());
+        assert_eq!(x.ty(&ctx).unwrap(), i64_ty.clone());
         let abs = ctx.bind_store.get(&id.to_key()).unwrap();
         assert_eq!(abs.args[0], x);
         assert_eq!(abs.expr.as_ref(), &Expr::Var(x));
-        assert_eq!(abs.expr.ty(), i64_ty);
+        assert_eq!(abs.expr.ty(&ctx).unwrap(), i64_ty);
     }
 }

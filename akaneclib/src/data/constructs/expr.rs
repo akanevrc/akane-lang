@@ -5,6 +5,7 @@ use std::{
     },
     rc::Rc,
 };
+use anyhow::Result;
 use crate::data::*;
 
 #[derive(Clone, Debug)]
@@ -77,12 +78,12 @@ impl Construct for Expr {
 }
 
 impl Expr {
-    pub fn new_as_var(ctx: &mut Context, qual: Rc<Qual>, name: String, ty: Rc<Ty>) -> Rc<Self> {
-        Rc::new(Self::Var(Var::new_or_get(ctx, qual, name, ty)))
+    pub fn new_as_var(ctx: &mut Context, qual: Rc<Qual>, name: String) -> Rc<Self> {
+        Rc::new(Self::Var(Var::new_or_get(ctx, qual, name)))
     }
 
-    pub fn new_as_cn(ctx: &mut Context, name: String, ty: Rc<Ty>) -> Rc<Self> {
-        Rc::new(Self::Cn(Cn::new_or_get(ctx, name, ty)))
+    pub fn new_as_cn(ctx: &mut Context, name: String) -> Rc<Self> {
+        Rc::new(Self::Cn(Cn::new_or_get(ctx, name)))
     }
 
     pub fn new_as_abs(ctx: &mut Context, args: Vec<Rc<Var>>, expr: Rc<Expr>) -> Rc<Self> {
@@ -93,16 +94,16 @@ impl Expr {
         Rc::new(Self::App(App::new(ctx, fn_expr, arg_expr)))
     }
 
-    pub fn ty(&self) -> Rc<Ty> {
+    pub fn ty(&self, ctx: &Context) -> Result<Rc<Ty>> {
         match self {
             Self::Var(var) =>
-                var.ty.clone(),
+                var.ty(ctx),
             Self::Cn(cn) =>
-                cn.ty.clone(),
+                Ok(cn.ty(ctx)),
             Self::Abs(abs) =>
-                abs.expr.ty(),
+                abs.expr.ty(ctx),
             Self::App(app) =>
-                app.fn_expr.ty().to_out_ty(),
+                app.fn_expr.ty(ctx).map(|ty| ty.to_out_ty()),
         }
     }
 }
