@@ -216,4 +216,19 @@ mod tests {
         assert_eq!(abs.expr.as_ref(), &Expr::Var(x));
         assert_eq!(abs.expr.ty(&ctx).unwrap(), i64_ty);
     }
+
+    #[test]
+    fn test_semantize_zero() {
+        let mut ctx = semantize("fn zero = 0").unwrap();
+        let top = Qual::top(&mut ctx).to_key();
+        let zero = ctx.var_store.get(&VarKey::new(top.clone(), "zero".to_owned())).unwrap();
+        let i64_ty = TyKey::new_as_base("I64".to_owned()).get_val(&ctx).unwrap();
+        assert_eq!(zero.name, "zero");
+        assert_eq!(zero.ty(&ctx).unwrap(), i64_ty.clone());
+        let abs = ctx.bind_store.get(&zero.to_key()).unwrap().clone();
+        let cn = Cn::new_or_get(&mut ctx, "0".to_owned());
+        assert_eq!(abs.args.len(), 0);
+        assert_eq!(abs.expr.as_ref(), &Expr::Cn(cn));
+        assert_eq!(abs.expr.ty(&ctx).unwrap(), i64_ty);
+    }
 }
