@@ -199,7 +199,7 @@ mod tests {
     }
 
     #[test]
-    fn test_id() {
+    fn test_semantize_id() {
         let mut ctx = semantize("fn id x = x").unwrap();
         let top = Qual::top(&mut ctx).to_key();
         let id = ctx.var_store.get(&VarKey::new(top.clone(), "id".to_owned())).unwrap();
@@ -210,7 +210,8 @@ mod tests {
         let x = ctx.var_store.get(&VarKey::new(x_qual, "x".to_owned())).unwrap();
         assert_eq!(x.name, "x");
         assert_eq!(x.ty(&ctx).unwrap(), i64_ty.clone());
-        let abs = ctx.bind_store.get(&id.to_key()).unwrap();
+        let abs = ctx.bind_store.get(&id.to_key()).unwrap().clone();
+        assert_eq!(abs.args.len(), 1);
         assert_eq!(abs.args[0], x);
         assert_eq!(abs.expr.as_ref(), &Expr::Var(x));
         assert_eq!(abs.expr.ty(&ctx).unwrap(), i64_ty);
