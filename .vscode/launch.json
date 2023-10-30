@@ -1,0 +1,80 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'akaneclib'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=akaneclib"
+        ],
+        "filter": {
+          "name": "akaneclib",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'akanec'",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=akanec",
+          "--package=akanec"
+        ],
+        "filter": {
+          "name": "akanec",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'akanec'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=akanec",
+          "--package=akanec"
+        ],
+        "filter": {
+          "name": "akanec",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'akanectest'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=akanectest"
+        ],
+        "filter": {
+          "name": "akanectest",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
