@@ -24,7 +24,7 @@ impl Construct for App {
 }
 
 impl App {
-    pub fn new(ctx: &mut SemContext, fn_expr: Rc<Expr>, arg_expr: Rc<Expr>) -> Rc<Self> {
+    pub fn new(ctx: &mut SemantizerContext, fn_expr: Rc<Expr>, arg_expr: Rc<Expr>) -> Rc<Self> {
         let val = Rc::new(Self {
             id: ctx.app_id.next_id(),
             fn_expr,

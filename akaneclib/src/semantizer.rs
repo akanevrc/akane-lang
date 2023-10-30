@@ -48,7 +48,7 @@ macro_rules! try_with_errors {
     };
 }
 
-pub fn semantize(ctx: &mut SemContext, top_def_enums: &[TopDefEnum]) -> Result<(), Vec<Error>> {
+pub fn semantize(ctx: &mut SemantizerContext, top_def_enums: &[TopDefEnum]) -> Result<(), Vec<Error>> {
     let mut errs = Vec::new();
     for top_def_enum in top_def_enums {
         visit_with_errors!(visit_top_def(ctx, top_def_enum), errs).ok();
@@ -61,13 +61,13 @@ pub fn semantize(ctx: &mut SemContext, top_def_enums: &[TopDefEnum]) -> Result<(
     }
 }
 
-fn visit_top_def(ctx: &mut SemContext, top_def_enum: &TopDefEnum) -> Result<Rc<Var>, Vec<Error>> {
+fn visit_top_def(ctx: &mut SemantizerContext, top_def_enum: &TopDefEnum) -> Result<Rc<Var>, Vec<Error>> {
     Ok(match top_def_enum {
         TopDefEnum::FnDef(fn_def_ast) => visit_fn_def(ctx, fn_def_ast)?,
     })
 }
 
-fn visit_fn_def(ctx: &mut SemContext, fn_def_ast: &FnDefAst) -> Result<Rc<Var>, Vec<Error>> {
+fn visit_fn_def(ctx: &mut SemantizerContext, fn_def_ast: &FnDefAst) -> Result<Rc<Var>, Vec<Error>> {
     let mut errs = Vec::new();
     let qual = try_with_errors!(ctx.qual_stack.peek().get_val(ctx), fn_def_ast.left_fn_def, errs);
     let name = &fn_def_ast.left_fn_def.name;
@@ -120,7 +120,7 @@ fn visit_fn_def(ctx: &mut SemContext, fn_def_ast: &FnDefAst) -> Result<Rc<Var>, 
     Ok(var)
 }
 
-fn visit_ty(ctx: &mut SemContext, ty_ast: &TyAst) -> Result<Rc<Ty>, Vec<Error>> {
+fn visit_ty(ctx: &mut SemantizerContext, ty_ast: &TyAst) -> Result<Rc<Ty>, Vec<Error>> {
     Ok(match &ty_ast.ty_enum {
         TyEnum::Arrow(arrow) =>
             Rc::new(Ty::Arrow(visit_arrow(ctx, arrow)?)),
@@ -129,7 +129,7 @@ fn visit_ty(ctx: &mut SemContext, ty_ast: &TyAst) -> Result<Rc<Ty>, Vec<Error>> 
     })
 }
 
-fn visit_arrow(ctx: &mut SemContext, arrow_ast: &ArrowAst) -> Result<Rc<Arrow>, Vec<Error>> {
+fn visit_arrow(ctx: &mut SemantizerContext, arrow_ast: &ArrowAst) -> Result<Rc<Arrow>, Vec<Error>> {
     let mut errs = Vec::new();
     match (
         visit_with_errors!(visit_ty(ctx, &arrow_ast.lhs), errs),
@@ -141,11 +141,11 @@ fn visit_arrow(ctx: &mut SemContext, arrow_ast: &ArrowAst) -> Result<Rc<Arrow>, 
     }
 }
 
-fn visit_base(ctx: &mut SemContext, ty_ident_ast: &BaseAst) -> Result<Rc<Base>, Vec<Error>> {
+fn visit_base(ctx: &mut SemantizerContext, ty_ident_ast: &BaseAst) -> Result<Rc<Base>, Vec<Error>> {
     Ok(Base::new_or_get(ctx, ty_ident_ast.name.clone()))
 }
 
-fn visit_expr(ctx: &mut SemContext, expr_ast: &ExprAst) -> Result<Rc<Expr>, Vec<Error>> {
+fn visit_expr(ctx: &mut SemantizerContext, expr_ast: &ExprAst) -> Result<Rc<Expr>, Vec<Error>> {
     Ok(match &expr_ast.expr_enum {
         ExprEnum::App(app_ast) =>
             Rc::new(Expr::App(visit_app(ctx, app_ast)?)),
@@ -156,7 +156,7 @@ fn visit_expr(ctx: &mut SemContext, expr_ast: &ExprAst) -> Result<Rc<Expr>, Vec<
     })
 }
 
-fn visit_app(ctx: &mut SemContext, app_ast: &AppAst) -> Result<Rc<App>, Vec<Error>> {
+fn visit_app(ctx: &mut SemantizerContext, app_ast: &AppAst) -> Result<Rc<App>, Vec<Error>> {
     let mut errs = Vec::new();
     match (
         visit_with_errors!(visit_expr(ctx, &app_ast.fn_expr), errs),
@@ -168,7 +168,7 @@ fn visit_app(ctx: &mut SemContext, app_ast: &AppAst) -> Result<Rc<App>, Vec<Erro
     }
 }
 
-fn visit_var(ctx: &mut SemContext, var_ast: &VarAst) -> Result<Rc<Var>, Vec<Error>> {
+fn visit_var(ctx: &mut SemantizerContext, var_ast: &VarAst) -> Result<Rc<Var>, Vec<Error>> {
     ctx.find_with_qual(|ctx, qual|
         VarKey::new(qual.to_key(), var_ast.name.clone()).get_val(ctx).ok()
     )
@@ -178,7 +178,7 @@ fn visit_var(ctx: &mut SemContext, var_ast: &VarAst) -> Result<Rc<Var>, Vec<Erro
     })
 }
 
-fn visit_num(ctx: &mut SemContext, num_ast: &NumAst) -> Result<Rc<Cn>, Vec<Error>> {
+fn visit_num(ctx: &mut SemantizerContext, num_ast: &NumAst) -> Result<Rc<Cn>, Vec<Error>> {
     Ok(Cn::new_or_get(ctx, num_ast.value.clone()))
 }
 
@@ -191,9 +191,9 @@ mod tests {
         parser,
     };
 
-    fn semantize(s: &str) -> Result<SemContext, Vec<Error>> {
+    fn semantize(s: &str) -> Result<SemantizerContext, Vec<Error>> {
         let parsed = parser::parse(lexer::lex(s).unwrap()).unwrap();
-        let mut ctx = SemContext::new();
+        let mut ctx = SemantizerContext::new();
         super::semantize(&mut ctx, &parsed)
         .map(|_| ctx)
     }

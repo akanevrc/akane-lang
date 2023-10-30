@@ -41,7 +41,7 @@ impl Construct for BaseKey {
 }
 
 impl Base {
-    pub fn new_or_get(ctx: &mut SemContext, name: String) -> Rc<Self> {
+    pub fn new_or_get(ctx: &mut SemantizerContext, name: String) -> Rc<Self> {
         let val = Rc::new(Self {
             id: ctx.base_store.next_id(),
             name,

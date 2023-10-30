@@ -53,7 +53,7 @@ impl Construct for VarKey {
 }
 
 impl Var {
-    pub fn new(ctx: &mut SemContext, qual: Rc<Qual>, name: String) -> Result<Rc<Self>> {
+    pub fn new(ctx: &mut SemantizerContext, qual: Rc<Qual>, name: String) -> Result<Rc<Self>> {
         let val = Rc::new(Self {
             id: ctx.var_store.next_id(),
             qual,
@@ -63,7 +63,7 @@ impl Var {
         ctx.var_store.insert(key, val)
     }
 
-    pub fn new_or_get(ctx: &mut SemContext, qual: Rc<Qual>, name: String) -> Rc<Self> {
+    pub fn new_or_get(ctx: &mut SemantizerContext, qual: Rc<Qual>, name: String) -> Rc<Self> {
         let val = Rc::new(Self {
             id: ctx.var_store.next_id(),
             qual,
@@ -73,11 +73,11 @@ impl Var {
         ctx.var_store.insert_or_get(key, val)
     }
 
-    pub fn ty(&self, ctx: &SemContext) -> Result<Rc<Ty>> {
+    pub fn ty(&self, ctx: &SemantizerContext) -> Result<Rc<Ty>> {
         ctx.var_ty_store.get(&self.to_key()).map(|ty| ty.clone())
     }
 
-    pub fn set_ty(&self, ctx: &mut SemContext, ty: Rc<Ty>) -> Result<()> {
+    pub fn set_ty(&self, ctx: &mut SemantizerContext, ty: Rc<Ty>) -> Result<()> {
         ctx.var_ty_store.insert(self.to_key(), ty)
     }
 }

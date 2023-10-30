@@ -39,7 +39,7 @@ pub trait ConstructVal: Construct {
 
 pub trait ConstructKey: Construct {
     type Val: Construct;
-    fn get_val(&self, ctx: &SemContext) -> Result<Rc<Self::Val>>;
+    fn get_val(&self, ctx: &SemantizerContext) -> Result<Rc<Self::Val>>;
 }
 
 impl Construct for String {

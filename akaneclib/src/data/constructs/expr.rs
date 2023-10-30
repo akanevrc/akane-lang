@@ -78,23 +78,23 @@ impl Construct for Expr {
 }
 
 impl Expr {
-    pub fn new_as_var(ctx: &mut SemContext, qual: Rc<Qual>, name: String) -> Rc<Self> {
+    pub fn new_as_var(ctx: &mut SemantizerContext, qual: Rc<Qual>, name: String) -> Rc<Self> {
         Rc::new(Self::Var(Var::new_or_get(ctx, qual, name)))
     }
 
-    pub fn new_as_cn(ctx: &mut SemContext, name: String) -> Rc<Self> {
+    pub fn new_as_cn(ctx: &mut SemantizerContext, name: String) -> Rc<Self> {
         Rc::new(Self::Cn(Cn::new_or_get(ctx, name)))
     }
 
-    pub fn new_as_abs(ctx: &mut SemContext, args: Vec<Rc<Var>>, expr: Rc<Expr>) -> Rc<Self> {
+    pub fn new_as_abs(ctx: &mut SemantizerContext, args: Vec<Rc<Var>>, expr: Rc<Expr>) -> Rc<Self> {
         Rc::new(Self::Abs(Abs::new(ctx, args, expr)))
     }
 
-    pub fn new_as_app(ctx: &mut SemContext, fn_expr: Rc<Expr>, arg_expr: Rc<Expr>) -> Rc<Self> {
+    pub fn new_as_app(ctx: &mut SemantizerContext, fn_expr: Rc<Expr>, arg_expr: Rc<Expr>) -> Rc<Self> {
         Rc::new(Self::App(App::new(ctx, fn_expr, arg_expr)))
     }
 
-    pub fn ty(&self, ctx: &SemContext) -> Result<Rc<Ty>> {
+    pub fn ty(&self, ctx: &SemantizerContext) -> Result<Rc<Ty>> {
         match self {
             Self::Var(var) =>
                 var.ty(ctx),
