@@ -3,7 +3,8 @@ name = "akaneclib"
 version = "0.1.0"
 edition = "2021"
 authors = ["akanevrc <akanezoranomukou@gmail.com>"]
-description = "Library for Akane language Compiler."
+description = "Library for Akane Language Compiler."
 
 [dependencies]
 anyhow = "1.0.75"
+inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = ["llvm15-0"] }

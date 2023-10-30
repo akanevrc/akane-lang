@@ -1,0 +1,2 @@
+ty I64 -> I64
+fn id x = x;

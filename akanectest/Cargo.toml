@@ -1,0 +1,10 @@
+[package]
+name = "akanectest"
+version = "0.1.0"
+edition = "2021"
+authors = ["akanevrc <akanezoranomukou@gmail.com>"]
+description = "Test for akanec."
+build = "build.rs"
+
+[build-dependencies]
+akaneclib = { version = "0.1.0", path = "../akaneclib" }

@@ -1,0 +1,11 @@
+[package]
+name = "akanec"
+version = "0.1.0"
+edition = "2021"
+authors = ["akanevrc <akanezoranomukou@gmail.com>"]
+description = "Compiler for Akane Language."
+
+[dependencies]
+anyhow = "1.0.75"
+clap = { version = "4.3.0", features = ["derive"] }
+akaneclib = { version = "0.1.0", path = "../akaneclib" }
