@@ -41,11 +41,11 @@ impl Construct for QualKey {
 }
 
 impl Qual {
-    pub fn top(ctx: &mut Context) -> Rc<Self> {
+    pub fn top(ctx: &mut SemContext) -> Rc<Self> {
         Qual::new_or_get(ctx, &QualKey::top())
     }
 
-    fn new_or_get_one(ctx: &mut Context, scopes: Vec<Scope>) -> Rc<Self> {
+    fn new_or_get_one(ctx: &mut SemContext, scopes: Vec<Scope>) -> Rc<Self> {
         let value = Rc::new(Self {
             id: ctx.qual_store.next_id(),
             scopes,
@@ -54,7 +54,7 @@ impl Qual {
         ctx.qual_store.insert_or_get(key, value)
     }
 
-    pub fn new_or_get(ctx: &mut Context, key: &QualKey) -> Rc<Self> {
+    pub fn new_or_get(ctx: &mut SemContext, key: &QualKey) -> Rc<Self> {
         for n in 1..key.scopes.len() {
             Self::new_or_get_one(ctx, key.scopes.iter().take(n).cloned().collect());
         }

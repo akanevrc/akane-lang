@@ -1,11 +1,11 @@
 mod str_info;
 mod token;
 mod ast;
-mod context;
+mod sem_context;
 mod constructs;
 
 pub use str_info::*;
 pub use token::*;
 pub use ast::*;
-pub use context::*;
+pub use sem_context::*;
 pub use constructs::*;

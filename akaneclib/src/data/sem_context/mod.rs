@@ -11,7 +11,7 @@ pub use generic_store::*;
 use std::rc::Rc;
 use crate::data::*;
 
-pub struct Context {
+pub struct SemContext {
     pub var_store: IdStore<VarKey, Var>,
     pub cn_store: IdStore<CnKey, Cn>,
     pub abs_id: IdVal,
@@ -27,7 +27,7 @@ pub struct Context {
     pub bind_store: GenericStore<VarKey, Rc<Abs>>,
 }
 
-impl Context {
+impl SemContext {
     pub fn new() -> Self {
         let mut ctx = Self {
             var_store: IdStore::new(),

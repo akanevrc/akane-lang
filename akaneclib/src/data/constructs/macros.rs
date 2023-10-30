@@ -50,7 +50,7 @@ macro_rules! impl_construct_key {
             type Val = $val_ty;
 
             fn get_val(
-                &self, ctx: &crate::data::context::Context,
+                &self, ctx: &crate::data::sem_context::SemContext,
             ) -> anyhow::Result<std::rc::Rc<Self::Val>> {
                 ctx.$store_name.get(self)
             }

@@ -24,7 +24,7 @@ impl Construct for Abs {
 }
 
 impl Abs {
-    pub fn new(ctx: &mut Context, args: Vec<Rc<Var>>, expr: Rc<Expr>) -> Rc<Self> {
+    pub fn new(ctx: &mut SemContext, args: Vec<Rc<Var>>, expr: Rc<Expr>) -> Rc<Self> {
         let val = Rc::new(Self {
             id: ctx.abs_id.next_id(),
             args,

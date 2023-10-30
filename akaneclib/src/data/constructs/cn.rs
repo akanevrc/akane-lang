@@ -42,7 +42,7 @@ impl Construct for CnKey {
 }
 
 impl Cn {
-    pub fn new(ctx: &mut Context, name: String) -> Result<Rc<Self>> {
+    pub fn new(ctx: &mut SemContext, name: String) -> Result<Rc<Self>> {
         let val = Rc::new(Self {
             id: ctx.var_store.next_id(),
             name,
@@ -54,7 +54,7 @@ impl Cn {
         Ok(val)
     }
 
-    pub fn new_or_get(ctx: &mut Context, name: String) -> Rc<Self> {
+    pub fn new_or_get(ctx: &mut SemContext, name: String) -> Rc<Self> {
         let val = Rc::new(Self {
             id: ctx.var_store.next_id(),
             name,
@@ -70,7 +70,7 @@ impl Cn {
         val
     }
 
-    pub fn ty(&self, ctx: &Context) -> Rc<Ty> {
+    pub fn ty(&self, ctx: &SemContext) -> Rc<Ty> {
         ctx.cn_ty_store.get(&self.to_key()).unwrap().clone()
     }
 }

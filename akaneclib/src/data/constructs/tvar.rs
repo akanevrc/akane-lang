@@ -52,7 +52,7 @@ impl Construct for TVarKey {
 }
 
 impl TVar {
-    pub fn new_or_get(ctx: &mut Context, qual: Rc<Qual>, name: String) -> Rc<Self> {
+    pub fn new_or_get(ctx: &mut SemContext, qual: Rc<Qual>, name: String) -> Rc<Self> {
         let val = Rc::new(Self {
             id: ctx.tvar_store.next_id(),
             qual,

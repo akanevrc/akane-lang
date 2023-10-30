@@ -53,7 +53,7 @@ impl Construct for ArrowKey {
 }
 
 impl Arrow {
-    pub fn new_or_get(ctx: &mut Context, in_ty: Rc<Ty>, out_ty: Rc<Ty>) -> Rc<Self> {
+    pub fn new_or_get(ctx: &mut SemContext, in_ty: Rc<Ty>, out_ty: Rc<Ty>) -> Rc<Self> {
         let rank = out_ty.rank() + 1;
         let val = Rc::new(Self {
             id: ctx.arrow_store.next_id(),

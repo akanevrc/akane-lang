@@ -105,25 +105,25 @@ impl Construct for TyKey {
 }
 
 impl Ty {
-    pub fn new_or_get_as_tvar(ctx: &mut Context, qual: Rc<Qual>, name: String) -> Rc<Self> {
+    pub fn new_or_get_as_tvar(ctx: &mut SemContext, qual: Rc<Qual>, name: String) -> Rc<Self> {
         let val = Rc::new(Self::TVar(TVar::new_or_get(ctx, qual, name)));
         let key = val.to_key();
         ctx.ty_store.insert_or_get(key, val)
     }
 
-    pub fn new_or_get_as_base(ctx: &mut Context, name: String) -> Rc<Self> {
+    pub fn new_or_get_as_base(ctx: &mut SemContext, name: String) -> Rc<Self> {
         let val = Rc::new(Self::Base(Base::new_or_get(ctx, name)));
         let key = val.to_key();
         ctx.ty_store.insert_or_get(key, val)
     }
 
-    pub fn new_or_get_as_arrow(ctx: &mut Context, in_ty: Rc<Ty>, out_ty: Rc<Ty>) -> Rc<Self> {
+    pub fn new_or_get_as_arrow(ctx: &mut SemContext, in_ty: Rc<Ty>, out_ty: Rc<Ty>) -> Rc<Self> {
         let val = Rc::new(Self::Arrow(Arrow::new_or_get(ctx, in_ty, out_ty)));
         let key = val.to_key();
         ctx.ty_store.insert_or_get(key, val)
     }
 
-    pub fn new_or_get_as_fn_ty(ctx: &mut Context, in_tys: Vec<Rc<Ty>>, out_ty: Rc<Ty>) -> Rc<Self> {
+    pub fn new_or_get_as_fn_ty(ctx: &mut SemContext, in_tys: Vec<Rc<Ty>>, out_ty: Rc<Ty>) -> Rc<Self> {
         let mut ty = out_ty;
         for in_ty in in_tys.into_iter().rev() {
             ty = Self::new_or_get_as_arrow(ctx, in_ty, ty);
