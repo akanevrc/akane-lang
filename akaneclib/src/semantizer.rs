@@ -97,14 +97,16 @@ fn visit_fn_def(ctx: &mut SemantizerContext, fn_def_ast: &FnDefAst) -> Result<Rc
     if arg_tys.len() != arg_names.len() {
         bail_ast_with_line!(errs, fn_def_ast.left_fn_def, "Defferent argument count between type annotation and function definition: `{}`{}", name);
     }
+    let abs_key = AbsKey::new(ctx.abs_store.next_id());
     let args =
         try_with_errors!(
             arg_names.iter()
             .zip(arg_tys)
-            .map(|(name, arg_ty)| {
-                let var = Var::new(ctx, qual.clone(), name.clone())?;
-                var.set_ty(ctx, arg_ty.clone()).unwrap();
-                Ok(var)
+            .enumerate()
+            .map(|(i, (name, arg_ty))| {
+                let arg = Var::new_as_arg(ctx, qual.clone(), name.clone(), Arg::new(abs_key.clone(), i))?;
+                arg.set_ty(ctx, arg_ty.clone()).unwrap();
+                Ok(arg)
             })
             .collect::<Result<Vec<_>>>(),
             fn_def_ast.left_fn_def,

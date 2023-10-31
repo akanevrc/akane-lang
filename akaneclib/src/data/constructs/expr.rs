@@ -101,9 +101,9 @@ impl Expr {
             Self::Cn(cn) =>
                 Ok(cn.ty(ctx)),
             Self::Abs(abs) =>
-                abs.expr.ty(ctx),
+                abs.ty(ctx),
             Self::App(app) =>
-                app.fn_expr.ty(ctx).map(|ty| ty.to_out_ty()),
+                app.ty(ctx),
         }
     }
 }

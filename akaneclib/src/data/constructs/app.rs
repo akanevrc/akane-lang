@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use anyhow::Result;
 use crate::{
     impl_id,
     data::*,
@@ -32,5 +33,9 @@ impl App {
         });
         ctx.app_id.increment();
         val
+    }
+
+    pub fn ty(&self, ctx: &SemantizerContext) -> Result<Rc<Ty>> {
+        self.fn_expr.ty(ctx).map(|ty| ty.to_out_ty())
     }
 }

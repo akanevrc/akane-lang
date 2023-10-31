@@ -8,7 +8,7 @@ use crate::data::*;
 pub struct SemantizerContext {
     pub var_store: IdStore<VarKey, Var>,
     pub cn_store: IdStore<CnKey, Cn>,
-    pub abs_id: IdVal,
+    pub abs_store: IdStore<AbsKey, Abs>,
     pub app_id: IdVal,
     pub ty_store: IdStore<TyKey, Ty>,
     pub tvar_store: IdStore<TVarKey, TVar>,
@@ -26,7 +26,7 @@ impl SemantizerContext {
         let mut ctx = Self {
             var_store: IdStore::new(),
             cn_store: IdStore::new(),
-            abs_id: IdVal::new(),
+            abs_store: IdStore::new(),
             app_id: IdVal::new(),
             ty_store: IdStore::new(),
             tvar_store: IdStore::new(),
