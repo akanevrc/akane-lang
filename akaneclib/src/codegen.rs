@@ -15,7 +15,6 @@ use crate::data::*;
 
 pub fn generate(cg_ctx: &mut CodeGenContext, sem_ctx: &SemantizerContext) -> Result<()> {
     for (var, abs) in sem_ctx.bind_store.keys_and_vals() {
-        eprintln!("{}", var.description());
         generate_function(cg_ctx, sem_ctx, var.get_val(sem_ctx).unwrap(), abs.clone())?;
     }
     Ok(())
