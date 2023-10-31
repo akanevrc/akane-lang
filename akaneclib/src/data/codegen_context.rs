@@ -1,16 +1,23 @@
 use inkwell::{
+    OptimizationLevel,
     builder::Builder,
     context::Context,
     execution_engine::ExecutionEngine,
     module::Module,
-    OptimizationLevel,
+    values::{
+        AnyValueEnum,
+        FunctionValue,
+    },
 };
+use crate::data::*;
 
 pub struct CodeGenContext<'ctx> {
     pub context: &'ctx Context,
     pub module: Module<'ctx>,
     pub builder: Builder<'ctx>,
     pub execution_engine: ExecutionEngine<'ctx>,
+    pub bound_values: GenericStore<VarKey, AnyValueEnum<'ctx>>,
+    pub functions: GenericStore<AbsKey, FunctionValue<'ctx>>,
 }
 
 impl<'ctx> CodeGenContext<'ctx> {
@@ -23,6 +30,8 @@ impl<'ctx> CodeGenContext<'ctx> {
             module,
             builder,
             execution_engine,
+            bound_values: GenericStore::new(),
+            functions: GenericStore::new(),
         }
     }
 }

@@ -18,8 +18,8 @@ pub fn compile(in_path: &str, out_path: &str) -> Result<(), Vec<Error>> {
     let mut sem_ctx = SemantizerContext::new();
     semantizer::semantize(&mut sem_ctx, &mut asts)?;
     let ctx = Context::create();
-    let cg_ctx = CodeGenContext::new(&ctx);
-    codegen::generate(&cg_ctx, &sem_ctx).map_err(|e| vec![e])?;
+    let mut cg_ctx = CodeGenContext::new(&ctx);
+    codegen::generate(&mut cg_ctx, &sem_ctx).map_err(|e| vec![e])?;
     printer::print_to_file(out_path, &cg_ctx).map_err(|e| vec![e])?;
     Ok(())
 }

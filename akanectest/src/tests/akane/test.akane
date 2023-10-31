@@ -1,2 +1,11 @@
+ty I64
+fn zero = 0;
+
+ty I64
+fn one = 1;
+
 ty I64 -> I64
 fn id x = x;
+
+ty I64
+fn nestedIdOne = id (id one);
