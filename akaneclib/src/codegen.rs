@@ -12,10 +12,12 @@ use inkwell::values::{
 };
 use crate::{
     data::*,
+    prelude,
     llvm,
 };
 
-pub fn generate(cg_ctx: &mut CodeGenContext, sem_ctx: &SemantizerContext) -> Result<()> {
+pub fn generate(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext) -> Result<()> {
+    prelude::init(cg_ctx, sem_ctx)?;
     for (var, abs) in sem_ctx.bind_store.keys_and_vals() {
         generate_fn(cg_ctx, sem_ctx, var.get_val(sem_ctx).unwrap(), abs.clone())?;
     }
@@ -42,7 +44,7 @@ fn generate_fn(cg_ctx: &mut CodeGenContext, sem_ctx: &SemantizerContext, var: Rc
     for (i, param) in params.into_iter().enumerate() {
         cg_ctx.bound_values.insert(abs.args[i].to_key(), param.into()).unwrap();
     }
-    llvm::build_function(cg_ctx, function, |cg_ctx| generate_expr(cg_ctx, sem_ctx, abs.expr.clone()))?;
+    llvm::build_function(cg_ctx, function, |cg_ctx, _| generate_expr(cg_ctx, sem_ctx, abs.expr.clone()))?;
     Ok(())
 }
 

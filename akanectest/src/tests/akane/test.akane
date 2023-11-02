@@ -9,3 +9,15 @@ fn id x = x;
 
 ty I64
 fn nestedIdOne = id (id one);
+
+ty I64 -> I64 -> I64
+fn addValues x y = x + y;
+
+ty I64 -> I64 -> I64
+fn subValues x y = x - y;
+
+ty I64 -> I64 -> I64
+fn mulValues x y = x * y;
+
+ty I64 -> I64 -> I64
+fn divValues x y = x / y;

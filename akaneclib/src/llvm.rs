@@ -55,10 +55,34 @@ pub fn set_param_names<'ctx>(_cg_ctx: &CodeGenContext<'ctx>, function: FunctionV
     Ok(params)
 }
 
-pub fn build_function<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, function: FunctionValue<'ctx>, generate: impl FnOnce(&mut CodeGenContext<'ctx>) -> Result<AnyValueEnum<'ctx>>) -> Result<()> {
+pub fn build_function<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, function: FunctionValue<'ctx>, body: impl FnOnce(&mut CodeGenContext<'ctx>, FunctionValue<'ctx>) -> Result<AnyValueEnum<'ctx>>) -> Result<()> {
     let basic_block = cg_ctx.context.append_basic_block(function, "");
     cg_ctx.builder.position_at_end(basic_block);
-    let ret: BasicValueEnum = generate(cg_ctx)?.try_into().map_err(|_| anyhow!("Not a basic value"))?;
+    let ret: BasicValueEnum = body(cg_ctx, function)?.try_into().map_err(|_| anyhow!("Not a basic value"))?;
     cg_ctx.builder.build_return(Some(&ret))?;
     Ok(())
+}
+
+pub fn build_add<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, function: FunctionValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
+    let lhs = function.get_nth_param(0).ok_or_else(|| anyhow!("No param[0]"))?.into_int_value();
+    let rhs = function.get_nth_param(1).ok_or_else(|| anyhow!("No param[1]"))?.into_int_value();
+    Ok(cg_ctx.builder.build_int_add(lhs, rhs, "")?.into())
+}
+
+pub fn build_sub<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, function: FunctionValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
+    let lhs = function.get_nth_param(0).ok_or_else(|| anyhow!("No param[0]"))?.into_int_value();
+    let rhs = function.get_nth_param(1).ok_or_else(|| anyhow!("No param[1]"))?.into_int_value();
+    Ok(cg_ctx.builder.build_int_sub(lhs, rhs, "")?.into())
+}
+
+pub fn build_mul<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, function: FunctionValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
+    let lhs = function.get_nth_param(0).ok_or_else(|| anyhow!("No param[0]"))?.into_int_value();
+    let rhs = function.get_nth_param(1).ok_or_else(|| anyhow!("No param[1]"))?.into_int_value();
+    Ok(cg_ctx.builder.build_int_mul(lhs, rhs, "")?.into())
+}
+
+pub fn build_div<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, function: FunctionValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
+    let lhs = function.get_nth_param(0).ok_or_else(|| anyhow!("No param[0]"))?.into_int_value();
+    let rhs = function.get_nth_param(1).ok_or_else(|| anyhow!("No param[1]"))?.into_int_value();
+    Ok(cg_ctx.builder.build_int_signed_div(lhs, rhs, "")?.into())
 }

@@ -38,8 +38,17 @@ impl SemantizerContext {
             cn_ty_store: GenericStore::new(),
             bind_store: GenericStore::new(),
         };
-        Qual::top(&mut ctx);
-        Ty::new_or_get_as_base(&mut ctx, "I64".to_owned());
+        let top = Qual::top(&mut ctx);
+        let i64_ty = Ty::new_or_get_as_base(&mut ctx, "I64".to_owned());
+        let add = Var::new_or_get(&mut ctx, top.clone(), "add".to_owned());
+        let sub = Var::new_or_get(&mut ctx, top.clone(), "sub".to_owned());
+        let mul = Var::new_or_get(&mut ctx, top.clone(), "mul".to_owned());
+        let div = Var::new_or_get(&mut ctx, top.clone(), "div".to_owned());
+        let fn_ty = Ty::new_or_get_as_fn_ty(&mut ctx, vec![i64_ty.clone(), i64_ty.clone()], i64_ty.clone());
+        ctx.var_ty_store.insert(add.to_key(), fn_ty.clone()).unwrap();
+        ctx.var_ty_store.insert(sub.to_key(), fn_ty.clone()).unwrap();
+        ctx.var_ty_store.insert(mul.to_key(), fn_ty.clone()).unwrap();
+        ctx.var_ty_store.insert(div.to_key(), fn_ty.clone()).unwrap();
         ctx
     }
 
