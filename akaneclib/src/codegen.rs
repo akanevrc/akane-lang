@@ -96,16 +96,18 @@ fn generate_abs<'ctx>(_cg_ctx: &mut CodeGenContext<'ctx>, _sem_ctx: &SemantizerC
 fn generate_app<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, sem_ctx: &SemantizerContext, app: Rc<App>) -> Result<BasicValueEnum<'ctx>> {
     let mut app = app;
     let mut arguments = Vec::new();
-    for _ in 1 .. app.ty(sem_ctx).unwrap().rank() {
+    for rank in 1 .. {
         arguments.push(generate_expr(cg_ctx, sem_ctx, app.arg_expr.clone())?);
         if let Expr::App(fn_app) = app.fn_expr.as_ref() {
             app = fn_app.clone();
+        }
+        else if rank == app.fn_expr.ty(sem_ctx).unwrap().rank() {
+            break;
         }
         else {
             bail!("Number of args does not match: {}", app.fn_expr.description());
         }
     }
-    arguments.push(generate_expr(cg_ctx, sem_ctx, app.arg_expr.clone())?);
     let arguments =
         arguments.into_iter()
         .rev()
