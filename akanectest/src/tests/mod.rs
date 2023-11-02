@@ -64,3 +64,12 @@ fn div_values() {
         assert_eq!(ffi::divValues(8, 2), 4);
     }
 }
+
+#[test]
+fn add_mul_values() {
+    unsafe {
+        assert_eq!(ffi::addMulValues(1, 2, 3, 4), 14);
+        assert_eq!(ffi::addMulValues(2, 3, 4, 5), 26);
+        assert_eq!(ffi::addMulValues(2, 4, 3, 5), 23);
+    }
+}

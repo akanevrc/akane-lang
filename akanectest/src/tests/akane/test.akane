@@ -21,3 +21,6 @@ fn mulValues x y = x * y;
 
 ty I64 -> I64 -> I64
 fn divValues x y = x / y;
+
+ty I64 -> I64 -> I64 -> I64 -> I64
+fn addMulValues x y z w = x * y + z * w;
