@@ -63,26 +63,18 @@ pub fn build_function<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, function: Functio
     Ok(())
 }
 
-pub fn build_add<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, function: FunctionValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
-    let lhs = function.get_nth_param(0).ok_or_else(|| anyhow!("No param[0]"))?.into_int_value();
-    let rhs = function.get_nth_param(1).ok_or_else(|| anyhow!("No param[1]"))?.into_int_value();
+pub fn build_add<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
     Ok(cg_ctx.builder.build_int_add(lhs, rhs, "")?.into())
 }
 
-pub fn build_sub<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, function: FunctionValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
-    let lhs = function.get_nth_param(0).ok_or_else(|| anyhow!("No param[0]"))?.into_int_value();
-    let rhs = function.get_nth_param(1).ok_or_else(|| anyhow!("No param[1]"))?.into_int_value();
+pub fn build_sub<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
     Ok(cg_ctx.builder.build_int_sub(lhs, rhs, "")?.into())
 }
 
-pub fn build_mul<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, function: FunctionValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
-    let lhs = function.get_nth_param(0).ok_or_else(|| anyhow!("No param[0]"))?.into_int_value();
-    let rhs = function.get_nth_param(1).ok_or_else(|| anyhow!("No param[1]"))?.into_int_value();
+pub fn build_mul<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
     Ok(cg_ctx.builder.build_int_mul(lhs, rhs, "")?.into())
 }
 
-pub fn build_div<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, function: FunctionValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
-    let lhs = function.get_nth_param(0).ok_or_else(|| anyhow!("No param[0]"))?.into_int_value();
-    let rhs = function.get_nth_param(1).ok_or_else(|| anyhow!("No param[1]"))?.into_int_value();
+pub fn build_div<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
     Ok(cg_ctx.builder.build_int_signed_div(lhs, rhs, "")?.into())
 }

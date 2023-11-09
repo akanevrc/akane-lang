@@ -73,3 +73,12 @@ fn add_mul_values() {
         assert_eq!(ffi::addMulValues(2, 4, 3, 5), 23);
     }
 }
+
+#[test]
+fn pipeline_add_values() {
+    unsafe {
+        assert_eq!(ffi::pipelineAddValues(1, 2), 3);
+        assert_eq!(ffi::pipelineAddValues(2, 3), 5);
+        assert_eq!(ffi::pipelineAddValues(3, 5), 8);
+    }
+}

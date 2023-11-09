@@ -11,4 +11,5 @@ extern "C" {
     pub fn mulValues(x: c_long, y: c_long) -> c_long;
     pub fn divValues(x: c_long, y: c_long) -> c_long;
     pub fn addMulValues(x: c_long, y: c_long, z: c_long, w: c_long) -> c_long;
+    pub fn pipelineAddValues(x: c_long, y: c_long) -> c_long;
 }

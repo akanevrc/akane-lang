@@ -1,5 +1,9 @@
-use std::rc::Rc;
+use std::{
+    collections::VecDeque,
+    rc::Rc,
+};
 use anyhow::{
+    anyhow,
     bail,
     Result,
 };
@@ -12,12 +16,10 @@ use inkwell::values::{
 };
 use crate::{
     data::*,
-    prelude,
     llvm,
 };
 
 pub fn generate(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext) -> Result<()> {
-    prelude::init(cg_ctx, sem_ctx)?;
     for (var, abs) in sem_ctx.bind_store.keys_and_vals() {
         generate_fn(cg_ctx, sem_ctx, var.get_val(sem_ctx).unwrap(), abs.clone())?;
     }
@@ -97,9 +99,9 @@ fn generate_abs<'ctx>(_cg_ctx: &mut CodeGenContext<'ctx>, _sem_ctx: &SemantizerC
 
 fn generate_app<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, sem_ctx: &SemantizerContext, app: Rc<App>) -> Result<BasicValueEnum<'ctx>> {
     let mut app = app;
-    let mut arguments = Vec::new();
+    let mut arguments = VecDeque::new();
     for rank in 1 .. {
-        arguments.push(generate_expr(cg_ctx, sem_ctx, app.arg_expr.clone())?);
+        arguments.push_front(generate_expr(cg_ctx, sem_ctx, app.arg_expr.clone())?);
         if let Expr::App(fn_app) = app.fn_expr.as_ref() {
             app = fn_app.clone();
         }
@@ -110,11 +112,41 @@ fn generate_app<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, sem_ctx: &SemantizerCon
             bail!("Number of args does not match: {}", app.fn_expr.description());
         }
     }
+    if let Expr::Var(var) = app.fn_expr.as_ref() {
+        let arguments = arguments.iter().cloned().collect::<Vec<_>>();
+        if let Some(value) = generate_special_op(cg_ctx, var.to_key(), &arguments)? {
+            return value.try_into().map_err(|_| anyhow!("Not a basic value"));
+        }
+    }
     let arguments =
         arguments.into_iter()
-        .rev()
         .map(|value| value.into_int_value().into())
         .collect::<Vec<_>>();
     let function = generate_expr(cg_ctx, sem_ctx, app.fn_expr.clone())?.into_function_value();
     llvm::build_call_with_args(cg_ctx, function, &arguments)
+}
+
+fn generate_special_op<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, var_key: VarKey, arguments: &[AnyValueEnum<'ctx>]) -> Result<Option<AnyValueEnum<'ctx>>> {
+    if var_key.qual == QualKey::top() {
+        Ok(
+            match var_key.name.as_str() {
+                "add" => Some(llvm::build_add(cg_ctx, arguments[0].into_int_value(), arguments[1].into_int_value())?.as_any_value_enum()),
+                "sub" => Some(llvm::build_sub(cg_ctx, arguments[0].into_int_value(), arguments[1].into_int_value())?.as_any_value_enum()),
+                "mul" => Some(llvm::build_mul(cg_ctx, arguments[0].into_int_value(), arguments[1].into_int_value())?.as_any_value_enum()),
+                "div" => Some(llvm::build_div(cg_ctx, arguments[0].into_int_value(), arguments[1].into_int_value())?.as_any_value_enum()),
+                "pipelineL" => {
+                    let function = arguments[0].into_function_value();
+                    let arguments =
+                        arguments[1 ..].iter()
+                        .map(|value| value.into_int_value().into())
+                        .collect::<Vec<_>>();
+                    Some(llvm::build_call_with_args(cg_ctx, function, &arguments)?.into())
+                },
+                _ => None,
+            }
+        )
+    }
+    else {
+        Ok(None)
+    }
 }
