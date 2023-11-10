@@ -1,6 +1,8 @@
 use std::{
+    cell::RefCell,
     collections::HashMap,
     hash::Hash,
+    rc::Rc,
 };
 use anyhow::{
     bail,
@@ -57,17 +59,33 @@ where
     }
 }
 
-impl<Key, Val> GenericStore<Key, Vec<Val>>
+impl<Key, Val> GenericStore<Key, Rc<RefCell<Vec<Val>>>>
 where
     Key: Clone + Eq + Hash + Construct,
     Val: Clone,
 {
-    pub fn push_into_vec(&mut self, key: &Key, val: Val) {
-        if !self.map.contains_key(key) {
-            let vec = Vec::new();
+    pub fn push_into_vec(&mut self, key: Key, val: Val) {
+        if !self.map.contains_key(&key) {
+            let vec = Rc::new(RefCell::new(Vec::new()));
             self.map.insert(key.clone(), vec);
         }
-        let vec = self.map.get_mut(key).unwrap();
-        vec.push(val);
+        let vec = self.map.get(&key).unwrap();
+        vec.borrow_mut().push(val);
+    }
+}
+
+impl<OuterKey, InnerKey, Val> GenericStore<OuterKey, Rc<RefCell<HashMap<InnerKey, Val>>>>
+where
+    OuterKey: Clone + Eq + Hash + Construct,
+    InnerKey: Clone + Eq + Hash + Construct,
+    Val: Clone,
+{
+    pub fn insert_into_map(&mut self, outer_key: OuterKey, inner_key: InnerKey, val: Val) {
+        if !self.map.contains_key(&outer_key) {
+            let map = Rc::new(RefCell::new(HashMap::new()));
+            self.map.insert(outer_key.clone(), map);
+        }
+        let map = self.map.get(&outer_key).unwrap();
+        map.borrow_mut().insert(inner_key, val);
     }
 }
