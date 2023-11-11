@@ -73,7 +73,7 @@ where
         }
     }
 
-    pub fn vals<'a>(&'a self) -> impl Iterator<Item = Rc<Val>> + 'a {
+    pub fn vals(&self) -> impl Iterator<Item = Rc<Val>> + '_ {
         self.vals.iter().cloned()
     }
 }

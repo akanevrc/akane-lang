@@ -54,7 +54,7 @@ where
         }
     }
 
-    pub fn keys_and_vals<'a>(&'a self) -> impl Iterator<Item = &(Key, Val)> + 'a {
+    pub fn keys_and_vals(&self) -> impl Iterator<Item = &(Key, Val)> + '_ {
         self.vec.iter()
     }
 }

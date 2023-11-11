@@ -34,7 +34,7 @@ impl QualStack {
         Ok(qual.unwrap())
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = QualKey> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = QualKey> + '_ {
         self.stack.iter().rev().cloned()
     }
 }
