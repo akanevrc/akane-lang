@@ -69,9 +69,10 @@ fn visit_top_def(ctx: &mut SemantizerContext, top_def_enum: &TopDefEnum) -> Resu
 
 fn visit_fn_def(ctx: &mut SemantizerContext, fn_def_ast: &FnDefAst) -> Result<Rc<Var>, Vec<Error>> {
     let mut errs = Vec::new();
-    let qual = try_with_errors!(ctx.qual_stack.peek().get_val(ctx), fn_def_ast.left_fn_def, errs);
     let name = &fn_def_ast.left_fn_def.name;
     let arg_names = &fn_def_ast.left_fn_def.args;
+    let parent_qual = try_with_errors!(ctx.qual_stack.peek().get_val(ctx), fn_def_ast.left_fn_def, errs);
+    let qual = try_with_errors!(ctx.push_scope_into_qual_stack(Scope::Abs(name.clone())).get_val(ctx), fn_def_ast.left_fn_def, errs);
     let fn_ty =
         if let Some(ty_annot) = &fn_def_ast.ty_annot {
             match visit_with_errors!(visit_ty(ctx, ty_annot), errs) {
@@ -86,13 +87,12 @@ fn visit_fn_def(ctx: &mut SemantizerContext, fn_def_ast: &FnDefAst) -> Result<Rc
             Ty::new_or_get_as_fn_ty(ctx, fn_in_tys, fn_out_ty)
         };
     let var =
-        match Var::new(ctx, qual, name.clone()) {
+        match Var::new(ctx, parent_qual, name.clone()) {
             Ok(var) => var,
             Err(_) =>
                 bail_ast_with_line!(errs, fn_def_ast.left_fn_def, "Duplicate function definitions: `{}`{}", name),
         };
     var.set_ty(ctx, fn_ty.clone()).unwrap();
-    let qual = try_with_errors!(ctx.push_scope_into_qual_stack(Scope::Abs(name.clone())).get_val(ctx), fn_def_ast.left_fn_def, errs);
     let (arg_tys, ret_ty) = fn_ty.to_arg_and_ret_tys();
     if arg_tys.len() != arg_names.len() {
         bail_ast_with_line!(errs, fn_def_ast.left_fn_def, "Defferent argument count between type annotation and function definition: `{}`{}", name);
@@ -126,6 +126,8 @@ fn visit_ty(ctx: &mut SemantizerContext, ty_ast: &TyAst) -> Result<Rc<Ty>, Vec<E
     Ok(match &ty_ast.ty_enum {
         TyEnum::Arrow(arrow) =>
             Rc::new(Ty::Arrow(visit_arrow(ctx, arrow)?)),
+        TyEnum::TVar(tvar) =>
+            Rc::new(Ty::TVar(visit_tvar(ctx, tvar)?)),
         TyEnum::Base(base) =>
             Rc::new(Ty::Base(visit_base(ctx, base)?)),
     })
@@ -143,8 +145,14 @@ fn visit_arrow(ctx: &mut SemantizerContext, arrow_ast: &ArrowAst) -> Result<Rc<A
     }
 }
 
-fn visit_base(ctx: &mut SemantizerContext, ty_ident_ast: &BaseAst) -> Result<Rc<Base>, Vec<Error>> {
-    Ok(Base::new_or_get(ctx, ty_ident_ast.name.clone()))
+fn visit_tvar(ctx: &mut SemantizerContext, tvar_ast: &TVarAst) -> Result<Rc<TVar>, Vec<Error>> {
+    let mut errs = Vec::new();
+    let qual = try_with_errors!(ctx.qual_stack.peek().get_val(ctx), tvar_ast, errs);
+    Ok(TVar::new_or_get(ctx, qual, tvar_ast.name.clone()))
+}
+
+fn visit_base(ctx: &mut SemantizerContext, base_ast: &BaseAst) -> Result<Rc<Base>, Vec<Error>> {
+    Ok(Base::new_or_get(ctx, base_ast.name.clone()))
 }
 
 fn visit_expr(ctx: &mut SemantizerContext, expr_ast: &ExprAst) -> Result<Rc<Expr>, Vec<Error>> {

@@ -13,12 +13,20 @@ pub fn arrow_ty_ast<'input>(arrow: ArrowAst<'input>, str_info: StrInfo<'input>) 
     Rc::new(TyAst { ty_enum: TyEnum::Arrow(arrow), str_info })
 }
 
+pub fn tvar_ty_ast<'input>(tvar: TVarAst<'input>, str_info: StrInfo<'input>) -> Rc<TyAst<'input>> {
+    Rc::new(TyAst { ty_enum: TyEnum::TVar(tvar), str_info })
+}
+
 pub fn base_ty_ast<'input>(base: BaseAst<'input>, str_info: StrInfo<'input>) -> Rc<TyAst<'input>> {
     Rc::new(TyAst { ty_enum: TyEnum::Base(base), str_info })
 }
 
 pub fn arrow_ast<'input>(lhs: Rc<TyAst<'input>>, rhs: Rc<TyAst<'input>>, str_info: StrInfo<'input>) -> ArrowAst<'input> {
     ArrowAst { lhs, rhs, str_info }
+}
+
+pub fn tvar_ast<'input>(name: String, str_info: StrInfo<'input>) -> TVarAst<'input> {
+    TVarAst { name, str_info }
 }
 
 pub fn base_ast<'input>(name: String, str_info: StrInfo<'input>) -> BaseAst<'input> {

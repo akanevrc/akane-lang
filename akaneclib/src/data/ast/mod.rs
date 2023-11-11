@@ -27,6 +27,7 @@ pub struct TyAst<'input> {
 #[derive(Clone, Debug, PartialEq)]
 pub enum TyEnum<'input> {
     Arrow(ArrowAst<'input>),
+    TVar(TVarAst<'input>),
     Base(BaseAst<'input>),
 }
 
@@ -34,6 +35,12 @@ pub enum TyEnum<'input> {
 pub struct ArrowAst<'input> {
     pub lhs: Rc<TyAst<'input>>,
     pub rhs: Rc<TyAst<'input>>,
+    pub str_info: StrInfo<'input>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TVarAst<'input> {
+    pub name: String,
     pub str_info: StrInfo<'input>,
 }
 

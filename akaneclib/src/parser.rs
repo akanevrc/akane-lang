@@ -178,6 +178,9 @@ fn assume_ty_factor<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo
     if let Some(ty) = assume_ty_paren(tokens)? {
         Ok(Some(ty))
     }
+    else if let Some(tvar) = assume_tvar(tokens)? {
+        Ok(Some(tvar_ty_ast(tvar.clone(), tvar.str_info.clone())))
+    }
     else if let Some(base) = assume_base(tokens)? {
         Ok(Some(base_ty_ast(base.clone(), base.str_info.clone())))
     }
@@ -197,6 +200,18 @@ fn assume_ty_paren<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<
             bail_tokens_with_line!(tokens, "`)` required:{}")
         }
         bail_tokens_with_line!(tokens, "Type expression required:{}")
+    }
+    else {
+        Ok(None)
+    }
+}
+
+fn assume_tvar<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<TVarAst<'input>>> {
+    if let Some(TokenInfo(Token::LowerIdent(name), info)) = tokens.peek() {
+        let name = name.clone();
+        let info = info.clone();
+        tokens.next();
+        Ok(Some(tvar_ast(name, info)))
     }
     else {
         Ok(None)
@@ -456,12 +471,20 @@ mod tests {
         data::arrow_ty_ast(arrow, dummy_info())
     }
 
+    fn tvar_ty_ast<'input>(tvar: TVarAst<'input>) -> Rc<TyAst<'input>> {
+        data::tvar_ty_ast(tvar, dummy_info())
+    }
+
     fn base_ty_ast<'input>(base: BaseAst<'input>) -> Rc<TyAst<'input>> {
         data::base_ty_ast(base, dummy_info())
     }
 
     fn arrow_ast<'input>(lhs: Rc<TyAst<'input>>, rhs: Rc<TyAst<'input>>) -> ArrowAst<'input> {
         data::arrow_ast(lhs, rhs, dummy_info())
+    }
+
+    fn tvar_ast<'input>(name: &'input str) -> TVarAst<'input> {
+        data::tvar_ast(name.to_owned(), dummy_info())
     }
 
     fn base_ast<'input>(name: &'input str) -> BaseAst<'input> {
@@ -852,7 +875,7 @@ mod tests {
                 ),
             ),
         ]);
-        assert_eq!(parse("ty (I64 -> I64) -> I64 -> I64 fn f a b = a b"), &[
+        assert_eq!(parse("ty (I64 -> a) -> I64 -> a fn f a b = a b"), &[
             top_fn_def_ast(
                 ty_fn_def_ast(
                     arrow_ty_ast(
@@ -860,13 +883,13 @@ mod tests {
                             arrow_ty_ast(
                                 arrow_ast(
                                     base_ty_ast(base_ast("I64")),
-                                    base_ty_ast(base_ast("I64")),
+                                    tvar_ty_ast(tvar_ast("a")),
                                 ),
                             ),
                             arrow_ty_ast(
                                 arrow_ast(
                                     base_ty_ast(base_ast("I64")),
-                                    base_ty_ast(base_ast("I64")),
+                                    tvar_ty_ast(tvar_ast("a")),
                                 ),
                             ),
                         ),
