@@ -26,4 +26,7 @@ ty I64 -> I64 -> I64 -> I64 -> I64
 fn addMulValues x y z w = x * y + z * w;
 
 ty I64 -> I64 -> I64
-fn pipelineAddValues x y = id <| x + y
+fn pipelineAddValues x y = id <| x + y;
+
+ty F64
+fn onePointFive = 1.5;

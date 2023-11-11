@@ -153,8 +153,10 @@ fn visit_expr(ctx: &mut SemantizerContext, expr_ast: &ExprAst) -> Result<Rc<Expr
             Rc::new(Expr::App(visit_app(ctx, app_ast)?)),
         ExprEnum::Var(var_ast) =>
             Rc::new(Expr::Var(visit_var(ctx, var_ast)?)),
-        ExprEnum::Num(num_ast) =>
-            Rc::new(Expr::Cn(visit_num(ctx, num_ast)?)),
+        ExprEnum::IntNum(int_num_ast) =>
+            Rc::new(Expr::Cn(visit_int_num(ctx, int_num_ast)?)),
+        ExprEnum::RealNum(real_num_ast) =>
+            Rc::new(Expr::Cn(visit_real_num(ctx, real_num_ast)?)),
     })
 }
 
@@ -180,8 +182,12 @@ fn visit_var(ctx: &mut SemantizerContext, var_ast: &VarAst) -> Result<Rc<Var>, V
     })
 }
 
-fn visit_num(ctx: &mut SemantizerContext, num_ast: &NumAst) -> Result<Rc<Cn>, Vec<Error>> {
-    Ok(Cn::new_or_get(ctx, num_ast.value.clone()))
+fn visit_int_num(ctx: &mut SemantizerContext, int_num_ast: &IntNumAst) -> Result<Rc<Cn>, Vec<Error>> {
+    Ok(Cn::new_or_get_as_i64(ctx, int_num_ast.value.clone()))
+}
+
+fn visit_real_num(ctx: &mut SemantizerContext, real_num_ast: &RealNumAst) -> Result<Rc<Cn>, Vec<Error>> {
+    Ok(Cn::new_or_get_as_f64(ctx, real_num_ast.value.clone()))
 }
 
 #[cfg(test)]
@@ -228,7 +234,7 @@ mod tests {
         assert_eq!(zero.name, "zero");
         assert_eq!(zero.ty(&ctx).unwrap(), i64_ty.clone());
         let abs = ctx.bind_store.get(&zero.to_key()).unwrap().clone();
-        let cn = Cn::new_or_get(&mut ctx, "0".to_owned());
+        let cn = Cn::new_or_get_as_i64(&mut ctx, "0".to_owned());
         assert_eq!(abs.args.len(), 0);
         assert_eq!(abs.expr.as_ref(), &Expr::Cn(cn));
         assert_eq!(abs.expr.ty(&ctx).unwrap(), i64_ty);

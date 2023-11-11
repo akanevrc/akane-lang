@@ -10,7 +10,6 @@ use anyhow::{
 use inkwell::values::{
     AnyValue,
     AnyValueEnum,
-    BasicValue,
     BasicValueEnum,
     FunctionValue,
 };
@@ -27,17 +26,13 @@ pub fn generate(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext) ->
 }
 
 fn generate_fn(cg_ctx: &mut CodeGenContext, sem_ctx: &SemantizerContext, var: Rc<Var>, abs: Rc<Abs>) -> Result<()> {
-    let i64_ty = TyKey::new_as_base("I64".to_owned()).get_val(sem_ctx).unwrap();
-    for arg in &abs.args {
-        if arg.ty(sem_ctx).unwrap() != i64_ty {
-            bail!("Function arg must be I64 type: {} {}", var.description(), arg.description());
-        }
-    }
-    if abs.expr.ty(sem_ctx).unwrap() != i64_ty {
-        bail!("Function must return I64 type: {}", var.description());
-    }
-    let i64_type = llvm::get_i64_type(cg_ctx)?;
-    let function_type = llvm::get_function_type(cg_ctx, &vec![i64_type.into(); abs.args.len()], i64_type.into())?;
+    let arg_tys = abs.args.iter().map(|arg| arg.ty(sem_ctx)).collect::<Result<Vec<_>>>()?;
+    let arg_types = arg_tys.iter().map(|ty| llvm::get_type_from_ty(cg_ctx, sem_ctx, ty.clone())).collect::<Result<Vec<_>>>()?;
+    let arg_basic_types = arg_types.iter().map(|t| t.clone().try_into().map_err(|_| anyhow!("Not a basic metadata type"))).collect::<Result<Vec<_>>>()?;
+    let ret_ty = abs.expr.ty(sem_ctx)?;
+    let ret_type = llvm::get_type_from_ty(cg_ctx, sem_ctx, ret_ty)?;
+    let ret_basic_type = ret_type.try_into().map_err(|_| anyhow!("Not a basic metadata type"))?;
+    let function_type = llvm::get_function_type(cg_ctx, &arg_basic_types, ret_basic_type)?;
     let function = llvm::add_function(cg_ctx, &var.name, function_type)?;
     cg_ctx.bound_values.insert(var.to_key(), function.into()).unwrap();
     cg_ctx.functions.insert(abs.to_key(), function).unwrap();
@@ -83,14 +78,8 @@ fn generate_var<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, sem_ctx: &SemantizerCon
     }
 }
 
-fn generate_cn<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, _sem_ctx: &SemantizerContext, cn: Rc<Cn>) -> Result<BasicValueEnum<'ctx>> {
-    if let Ok(i64_num) = cn.name.parse::<i64>() {
-        llvm::get_const_i64(cg_ctx, i64_num)
-        .map(|value| value.as_basic_value_enum())
-    }
-    else {
-        bail!("Not a number: {}", cn.description())
-    }
+fn generate_cn<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, sem_ctx: &SemantizerContext, cn: Rc<Cn>) -> Result<BasicValueEnum<'ctx>> {
+    llvm::get_const_from_cn(cg_ctx, sem_ctx, cn)
 }
 
 fn generate_abs<'ctx>(_cg_ctx: &mut CodeGenContext<'ctx>, _sem_ctx: &SemantizerContext, _abs: Rc<Abs>) -> Result<FunctionValue<'ctx>> {
@@ -120,8 +109,8 @@ fn generate_app<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, sem_ctx: &SemantizerCon
     }
     let arguments =
         arguments.into_iter()
-        .map(|value| value.into_int_value().into())
-        .collect::<Vec<_>>();
+        .map(|value| value.try_into().map_err(|_| anyhow!("Not a basic metadata value")))
+        .collect::<Result<Vec<_>>>()?;
     let function = generate_expr(cg_ctx, sem_ctx, app.fn_expr.clone())?.into_function_value();
     llvm::build_call_with_args(cg_ctx, function, &arguments)
 }

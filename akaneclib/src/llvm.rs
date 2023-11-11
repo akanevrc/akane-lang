@@ -1,27 +1,50 @@
+use std::rc::Rc;
 use anyhow::{
     anyhow,
+    bail,
     Result,
 };
 use inkwell::{
     module::Linkage,
     types::{
+        AnyTypeEnum,
         BasicTypeEnum,
         BasicMetadataTypeEnum,
+        FloatType,
         FunctionType,
         IntType,
     },
     values::{
         AnyValueEnum,
+        BasicValue,
         BasicValueEnum,
         BasicMetadataValueEnum,
+        FloatValue,
         FunctionValue,
         IntValue,
     },
 };
 use crate::data::*;
 
+pub fn get_const_from_cn<'ctx>(cg_ctx: &CodeGenContext<'ctx>, sem_ctx: &SemantizerContext, cn: Rc<Cn>) -> Result<BasicValueEnum<'ctx>> {
+    match sem_ctx.cn_ty_store.get(&cn.to_key()) {
+        Ok(ty) if ty == TyKey::new_as_base("I64".to_owned()).get_val(sem_ctx).unwrap() =>
+            get_const_i64(cg_ctx, cn.name.parse::<i64>().unwrap()).map(|value| value.as_basic_value_enum()),
+        Ok(ty) if ty == TyKey::new_as_base("F64".to_owned()).get_val(sem_ctx).unwrap() =>
+            get_const_f64(cg_ctx, cn.name.parse::<f64>().unwrap()).map(|value| value.as_basic_value_enum()),
+        Ok(_) =>
+            bail!("Unsupported constant type: {}", cn.description()),
+        Err(_) =>
+            bail!("Key not found: `{}`", cn.description()),
+    }
+}
+
 pub fn get_const_i64<'ctx>(cg_ctx: &CodeGenContext<'ctx>, value: i64) -> Result<IntValue<'ctx>> {
     Ok(cg_ctx.context.i64_type().const_int(value as u64, false))
+}
+
+pub fn get_const_f64<'ctx>(cg_ctx: &CodeGenContext<'ctx>, value: f64) -> Result<FloatValue<'ctx>> {
+    Ok(cg_ctx.context.f64_type().const_float(value))
 }
 
 pub fn build_call_without_args<'ctx>(cg_ctx: &CodeGenContext<'ctx>, function: FunctionValue<'ctx>) -> Result<BasicValueEnum<'ctx>> {
@@ -34,12 +57,34 @@ pub fn build_call_with_args<'ctx>(cg_ctx: &CodeGenContext<'ctx>, function: Funct
     .try_as_basic_value().left().ok_or_else(|| anyhow!("Not a basic value"))
 }
 
+pub fn get_type_from_ty<'ctx>(cg_ctx: &CodeGenContext<'ctx>, sem_ctx: &SemantizerContext, ty: Rc<Ty>) -> Result<AnyTypeEnum<'ctx>> {
+    match ty {
+        ty if ty == TyKey::new_as_base("I64".to_owned()).get_val(sem_ctx).unwrap() =>
+            get_i64_type(cg_ctx).map(|ty| ty.into()),
+        ty if ty == TyKey::new_as_base("F64".to_owned()).get_val(sem_ctx).unwrap() =>
+            get_f64_type(cg_ctx).map(|ty| ty.into()),
+        _ =>
+            bail!("Unsupported type: {}", ty.description()),
+    }
+}
+
 pub fn get_i64_type<'ctx>(cg_ctx: &CodeGenContext<'ctx>) -> Result<IntType<'ctx>> {
     Ok(cg_ctx.context.i64_type())
 }
 
+pub fn get_f64_type<'ctx>(cg_ctx: &CodeGenContext<'ctx>) -> Result<FloatType<'ctx>> {
+    Ok(cg_ctx.context.f64_type())
+}
+
 pub fn get_function_type<'ctx>(_cg_ctx: &CodeGenContext<'ctx>, arg_types: &[BasicMetadataTypeEnum<'ctx>], return_type: BasicTypeEnum<'ctx>) -> Result<FunctionType<'ctx>> {
-    Ok(return_type.into_int_type().fn_type(arg_types, false))
+    match return_type {
+        BasicTypeEnum::IntType(return_type) =>
+            Ok(return_type.fn_type(arg_types, false)),
+        BasicTypeEnum::FloatType(return_type) =>
+            Ok(return_type.fn_type(arg_types, false)),
+        _ =>
+            bail!("Unsupported return type: {:?}", return_type),
+    }
 }
 
 pub fn add_function<'ctx>(cg_ctx: &CodeGenContext<'ctx>, function_name: &str, function_type: FunctionType<'ctx>) -> Result<FunctionValue<'ctx>> {

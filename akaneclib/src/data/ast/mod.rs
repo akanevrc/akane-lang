@@ -60,7 +60,8 @@ pub struct ExprAst<'input> {
 pub enum ExprEnum<'input> {
     App(AppAst<'input>),
     Var(VarAst<'input>),
-    Num(NumAst<'input>),
+    IntNum(IntNumAst<'input>),
+    RealNum(RealNumAst<'input>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -77,7 +78,13 @@ pub struct VarAst<'input> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct NumAst<'input> {
+pub struct IntNumAst<'input> {
+    pub value: String,
+    pub str_info: StrInfo<'input>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct RealNumAst<'input> {
     pub value: String,
     pub str_info: StrInfo<'input>,
 }

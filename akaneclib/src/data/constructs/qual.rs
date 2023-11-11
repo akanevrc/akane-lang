@@ -42,7 +42,7 @@ impl Construct for QualKey {
 
 impl Qual {
     pub fn top(ctx: &mut SemantizerContext) -> Rc<Self> {
-        Qual::new_or_get(ctx, &QualKey::top())
+        QualKey::top().get_val(ctx).unwrap()
     }
 
     fn new_or_get_one(ctx: &mut SemantizerContext, scopes: Vec<Scope>) -> Rc<Self> {

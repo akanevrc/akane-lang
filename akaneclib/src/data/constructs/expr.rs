@@ -82,8 +82,12 @@ impl Expr {
         Rc::new(Self::Var(Var::new_or_get(ctx, qual, name)))
     }
 
-    pub fn new_as_cn(ctx: &mut SemantizerContext, name: String) -> Rc<Self> {
-        Rc::new(Self::Cn(Cn::new_or_get(ctx, name)))
+    pub fn new_as_cn_as_i64(ctx: &mut SemantizerContext, name: String) -> Rc<Self> {
+        Rc::new(Self::Cn(Cn::new_or_get_as_i64(ctx, name)))
+    }
+
+    pub fn new_as_cn_as_f64(ctx: &mut SemantizerContext, name: String) -> Rc<Self> {
+        Rc::new(Self::Cn(Cn::new_or_get_as_f64(ctx, name)))
     }
 
     pub fn new_as_abs(ctx: &mut SemantizerContext, args: Vec<Rc<Var>>, expr: Rc<Expr>) -> Rc<Self> {

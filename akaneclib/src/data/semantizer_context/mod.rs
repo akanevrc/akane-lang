@@ -2,7 +2,11 @@ mod qual_stack;
 
 pub use qual_stack::*;
 
-use std::rc::Rc;
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    rc::Rc,
+};
 use crate::data::*;
 
 pub struct SemantizerContext {
@@ -19,6 +23,7 @@ pub struct SemantizerContext {
     pub var_ty_store: GenericStore<VarKey, Rc<Ty>>,
     pub cn_ty_store: GenericStore<CnKey, Rc<Ty>>,
     pub bind_store: GenericStore<VarKey, Rc<Abs>>,
+    pub generic_ty_store: GenericStore<TyKey, Rc<RefCell<HashMap<TVarKey, Rc<Ty>>>>>
 }
 
 impl SemantizerContext {
@@ -37,8 +42,10 @@ impl SemantizerContext {
             var_ty_store: GenericStore::new(),
             cn_ty_store: GenericStore::new(),
             bind_store: GenericStore::new(),
+            generic_ty_store: GenericStore::new(),
         };
-        let top = Qual::top(&mut ctx);
+        let top = Qual::new_or_get(&mut ctx, &QualKey::top());
+        Ty::new_or_get_as_base(&mut ctx, "Bottom".to_owned());
         let i64_ty = Ty::new_or_get_as_base(&mut ctx, "I64".to_owned());
         let add = Var::new_or_get(&mut ctx, top.clone(), "add".to_owned());
         let sub = Var::new_or_get(&mut ctx, top.clone(), "sub".to_owned());
@@ -53,6 +60,7 @@ impl SemantizerContext {
         let pipeline_l_fn_ty = Ty::new_or_get_as_fn_ty(&mut ctx, vec![i64_ty.clone()], i64_ty.clone());
         let pipeline_l_op_ty = Ty::new_or_get_as_fn_ty(&mut ctx, vec![pipeline_l_fn_ty, i64_ty.clone()], i64_ty.clone());
         ctx.var_ty_store.insert(pipeline_l.to_key(), pipeline_l_op_ty.clone()).unwrap();
+        Ty::new_or_get_as_base(&mut ctx, "F64".to_owned());
         ctx
     }
 

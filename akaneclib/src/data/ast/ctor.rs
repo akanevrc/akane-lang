@@ -37,8 +37,12 @@ pub fn var_expr_ast<'input>(var_ast: VarAst<'input>, str_info: StrInfo<'input>) 
     Rc::new(ExprAst { expr_enum: ExprEnum::Var(var_ast), str_info })
 }
 
-pub fn num_expr_ast<'input>(num_ast: NumAst<'input>, str_info: StrInfo<'input>) -> Rc<ExprAst<'input>> {
-    Rc::new(ExprAst { expr_enum: ExprEnum::Num(num_ast), str_info })
+pub fn int_num_expr_ast<'input>(int_num_ast: IntNumAst<'input>, str_info: StrInfo<'input>) -> Rc<ExprAst<'input>> {
+    Rc::new(ExprAst { expr_enum: ExprEnum::IntNum(int_num_ast), str_info })
+}
+
+pub fn real_num_expr_ast<'input>(real_num_ast: RealNumAst<'input>, str_info: StrInfo<'input>) -> Rc<ExprAst<'input>> {
+    Rc::new(ExprAst { expr_enum: ExprEnum::RealNum(real_num_ast), str_info })
 }
 
 pub fn app_ast<'input>(fn_expr: Rc<ExprAst<'input>>, arg_expr: Rc<ExprAst<'input>>, str_info: StrInfo<'input>) -> AppAst<'input> {
@@ -72,6 +76,10 @@ pub fn var_ast<'input>(name: String, str_info: StrInfo<'input>) -> VarAst<'input
     VarAst { name, str_info }
 }
 
-pub fn num_ast<'input>(value: String, str_info: StrInfo<'input>) -> NumAst<'input> {
-    NumAst { value, str_info }
+pub fn int_num_ast<'input>(value: String, str_info: StrInfo<'input>) -> IntNumAst<'input> {
+    IntNumAst { value, str_info }
+}
+
+pub fn real_num_ast<'input>(value: String, str_info: StrInfo<'input>) -> RealNumAst<'input> {
+    RealNumAst { value, str_info }
 }

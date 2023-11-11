@@ -322,8 +322,11 @@ fn assume_factor<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'i
     else if let Some(var) = assume_var(tokens)? {
         Ok(Some(var_expr_ast(var.clone(), var.str_info)))
     }
-    else if let Some(num) = assume_num(tokens)? {
-        Ok(Some(num_expr_ast(num.clone(), num.str_info)))
+    else if let Some(int_num) = assume_int_num(tokens)? {
+        Ok(Some(int_num_expr_ast(int_num.clone(), int_num.str_info)))
+    }
+    else if let Some(real_num) = assume_real_num(tokens)? {
+        Ok(Some(real_num_expr_ast(real_num.clone(), real_num.str_info)))
     }
     else {
         Ok(None)
@@ -359,12 +362,24 @@ fn assume_var<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'inpu
     }
 }
 
-fn assume_num<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<NumAst<'input>>> {
-    if let Some(TokenInfo(Token::Num(value), info)) = tokens.peek() {
+fn assume_int_num<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<IntNumAst<'input>>> {
+    if let Some(TokenInfo(Token::IntNum(value), info)) = tokens.peek() {
         let value = value.clone();
         let info = info.clone();
         tokens.next();
-        Ok(Some(num_ast(value, info)))
+        Ok(Some(int_num_ast(value, info)))
+    }
+    else {
+        Ok(None)
+    }
+}
+
+fn assume_real_num<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<RealNumAst<'input>>> {
+    if let Some(TokenInfo(Token::RealNum(value), info)) = tokens.peek() {
+        let value = value.clone();
+        let info = info.clone();
+        tokens.next();
+        Ok(Some(real_num_ast(value, info)))
     }
     else {
         Ok(None)
@@ -469,8 +484,12 @@ mod tests {
         data::var_expr_ast(var_ast, dummy_info())
     }
 
-    fn num_expr_ast<'input>(num_ast: NumAst<'input>) -> Rc<ExprAst<'input>> {
-        data::num_expr_ast(num_ast, dummy_info())
+    fn int_num_expr_ast<'input>(int_num_ast: IntNumAst<'input>) -> Rc<ExprAst<'input>> {
+        data::int_num_expr_ast(int_num_ast, dummy_info())
+    }
+
+    fn real_num_expr_ast<'input>(real_num_ast: RealNumAst<'input>) -> Rc<ExprAst<'input>> {
+        data::real_num_expr_ast(real_num_ast, dummy_info())
     }
 
     fn app_ast<'input>(fn_expr: Rc<ExprAst<'input>>, arg_expr: Rc<ExprAst<'input>>) -> AppAst<'input> {
@@ -489,8 +508,12 @@ mod tests {
         data::var_ast(name.to_owned(), dummy_info())
     }
 
-    fn num_ast<'input>(value: &'input str) -> NumAst<'input> {
-        data::num_ast(value.to_owned(), dummy_info())
+    fn int_num_ast<'input>(value: &'input str) -> IntNumAst<'input> {
+        data::int_num_ast(value.to_owned(), dummy_info())
+    }
+
+    fn real_num_ast<'input>(value: &'input str) -> RealNumAst<'input> {
+        data::real_num_ast(value.to_owned(), dummy_info())
     }
 
     fn dummy_info<'a>() -> StrInfo<'a> {
@@ -508,7 +531,7 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["a"]),
-                    num_expr_ast(num_ast("0")),
+                    int_num_expr_ast(int_num_ast("0")),
                 ),
             ),
         ]);
@@ -516,7 +539,7 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["a", "b"]),
-                    num_expr_ast(num_ast("0")),
+                    int_num_expr_ast(int_num_ast("0")),
                 ),
             ),
         ]);
@@ -543,12 +566,12 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_num() {
+    fn test_parse_int_num() {
         assert_eq!(parse("fn f = 0"), &[
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &[]),
-                    num_expr_ast(num_ast("0")),
+                    int_num_expr_ast(int_num_ast("0")),
                 ),
             ),
         ]);
@@ -556,7 +579,27 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &[]),
-                    num_expr_ast(num_ast("123")),
+                    int_num_expr_ast(int_num_ast("123")),
+                ),
+            ),
+        ]);
+    }
+
+    #[test]
+    fn test_parse_real_num() {
+        assert_eq!(parse("fn f = 0.0"), &[
+            top_fn_def_ast(
+                fn_def_ast(
+                    left_fn_def_ast("f", &[]),
+                    real_num_expr_ast(real_num_ast("0.0")),
+                ),
+            ),
+        ]);
+        assert_eq!(parse("fn f = 125.125"), &[
+            top_fn_def_ast(
+                fn_def_ast(
+                    left_fn_def_ast("f", &[]),
+                    real_num_expr_ast(real_num_ast("125.125")),
                 ),
             ),
         ]);
@@ -607,7 +650,7 @@ mod tests {
                         infix_op_ast(
                             "add",
                             var_expr_ast(var_ast("a")),
-                            num_expr_ast(num_ast("1")),
+                            int_num_expr_ast(int_num_ast("1")),
                         ),
                     ),
                 ),
@@ -766,7 +809,7 @@ mod tests {
                     app_expr_ast(
                         prefix_op_ast(
                             "negate",
-                            num_expr_ast(num_ast("1")),
+                            int_num_expr_ast(int_num_ast("1")),
                         ),
                     ),
                 ),
@@ -785,7 +828,7 @@ mod tests {
                                     var_expr_ast(var_ast("a")),
                                 ),
                             ),
-                            num_expr_ast(num_ast("1")),
+                            int_num_expr_ast(int_num_ast("1")),
                         ),
                     ),
                 ),
@@ -805,7 +848,7 @@ mod tests {
                         ),
                     ),
                     left_fn_def_ast("f", &["a"]),
-                    num_expr_ast(num_ast("0")),
+                    int_num_expr_ast(int_num_ast("0")),
                 ),
             ),
         ]);

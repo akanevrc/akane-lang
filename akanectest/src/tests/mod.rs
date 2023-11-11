@@ -82,3 +82,10 @@ fn pipeline_add_values() {
         assert_eq!(ffi::pipelineAddValues(3, 5), 8);
     }
 }
+
+#[test]
+fn one_point_five() {
+    unsafe {
+        assert_eq!(ffi::onePointFive(), 1.5);
+    }
+}

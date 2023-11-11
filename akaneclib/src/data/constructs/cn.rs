@@ -42,29 +42,42 @@ impl Construct for CnKey {
 }
 
 impl Cn {
-    pub fn new(ctx: &mut SemantizerContext, name: String) -> Result<Rc<Self>> {
+    pub fn new_as_i64(ctx: &mut SemantizerContext, name: String) -> Result<Rc<Self>> {
+        Self::new_with_ty(ctx, name, TyKey::new_as_base("I64".to_owned()).get_val(ctx)?)
+    }
+
+    pub fn new_as_f64(ctx: &mut SemantizerContext, name: String) -> Result<Rc<Self>> {
+        Self::new_with_ty(ctx, name, TyKey::new_as_base("F64".to_owned()).get_val(ctx)?)
+    }
+
+    fn new_with_ty(ctx: &mut SemantizerContext, name: String, ty: Rc<Ty>) -> Result<Rc<Self>> {
         let val = Rc::new(Self {
             id: ctx.var_store.next_id(),
-            name,
+            name: name.clone(),
         });
         let key = val.to_key();
         ctx.cn_store.insert(key.clone(), val.clone())?;
-        let i64_ty = TyKey::new_as_base("I64".to_owned()).get_val(ctx).unwrap();
-        ctx.cn_ty_store.insert(key, i64_ty).unwrap();
+        ctx.cn_ty_store.insert(key, ty).unwrap();
         Ok(val)
     }
 
-    pub fn new_or_get(ctx: &mut SemantizerContext, name: String) -> Rc<Self> {
+    pub fn new_or_get_as_i64(ctx: &mut SemantizerContext, name: String) -> Rc<Self> {
+        Self::new_or_get_with_ty(ctx, name, TyKey::new_as_base("I64".to_owned()).get_val(ctx).unwrap())
+    }
+
+    pub fn new_or_get_as_f64(ctx: &mut SemantizerContext, name: String) -> Rc<Self> {
+        Self::new_or_get_with_ty(ctx, name, TyKey::new_as_base("F64".to_owned()).get_val(ctx).unwrap())
+    }
+
+    fn new_or_get_with_ty(ctx: &mut SemantizerContext, name: String, ty: Rc<Ty>) -> Rc<Self> {
         let val = Rc::new(Self {
             id: ctx.var_store.next_id(),
-            name,
+            name: name.clone(),
         });
         let key = val.to_key();
         match ctx.cn_store.insert(key.clone(), val.clone()) {
-            Ok(_) => {
-                let i64_ty = TyKey::new_as_base("I64".to_owned()).get_val(ctx).unwrap();
-                ctx.cn_ty_store.insert(key, i64_ty).unwrap();
-            },
+            Ok(_) =>
+                ctx.cn_ty_store.insert(key, ty).unwrap(),
             Err(_) => (),
         }
         val

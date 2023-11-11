@@ -1,15 +1,19 @@
-use std::os::raw::c_long;
+use std::ffi::{
+    c_double,
+    c_longlong,
+};
 
 #[link(name = "akanectest")]
 extern "C" {
-    pub fn zero() -> c_long;
-    pub fn one() -> c_long;
-    pub fn id(x: c_long) -> c_long;
-    pub fn nestedIdOne() -> c_long;
-    pub fn addValues(x: c_long, y: c_long) -> c_long;
-    pub fn subValues(x: c_long, y: c_long) -> c_long;
-    pub fn mulValues(x: c_long, y: c_long) -> c_long;
-    pub fn divValues(x: c_long, y: c_long) -> c_long;
-    pub fn addMulValues(x: c_long, y: c_long, z: c_long, w: c_long) -> c_long;
-    pub fn pipelineAddValues(x: c_long, y: c_long) -> c_long;
+    pub fn zero() -> c_longlong;
+    pub fn one() -> c_longlong;
+    pub fn id(x: c_longlong) -> c_longlong;
+    pub fn nestedIdOne() -> c_longlong;
+    pub fn addValues(x: c_longlong, y: c_longlong) -> c_longlong;
+    pub fn subValues(x: c_longlong, y: c_longlong) -> c_longlong;
+    pub fn mulValues(x: c_longlong, y: c_longlong) -> c_longlong;
+    pub fn divValues(x: c_longlong, y: c_longlong) -> c_longlong;
+    pub fn addMulValues(x: c_longlong, y: c_longlong, z: c_longlong, w: c_longlong) -> c_longlong;
+    pub fn pipelineAddValues(x: c_longlong, y: c_longlong) -> c_longlong;
+    pub fn onePointFive() -> c_double;
 }

@@ -143,8 +143,22 @@ fn assume_num<'input>(chars: &mut Peekable<CharInfos<'input>>) -> Result<Option<
             token.push(c);
             info_tail = info;
         }
-        let info = info_head.extend(&info_tail);
-        Ok(Some(TokenInfo(Token::Num(token), info)))
+        if map_char_info(chars.peek(), false, is_dot) {
+            let (info, dot) = chars.next().unwrap();
+            token.push(dot);
+            info_tail = info;
+            while map_char_info(chars.peek(), false, is_num) {
+                let (info, c) = chars.next().unwrap();
+                token.push(c);
+                info_tail = info;
+            }
+            let info = info_head.extend(&info_tail);
+            Ok(Some(TokenInfo(Token::RealNum(token), info)))
+        }
+        else {
+            let info = info_head.extend(&info_tail);
+            Ok(Some(TokenInfo(Token::IntNum(token), info)))
+        }
     }
     else {
         Ok(None)
@@ -205,6 +219,10 @@ fn is_whitespace(c: &char) -> bool {
 
 fn is_semicolon(c: &char) -> bool {
     *c == ';'
+}
+
+fn is_dot(c: &char) -> bool {
+    *c == '.'
 }
 
 fn is_ident_head(c: &char) -> bool {
@@ -331,18 +349,27 @@ mod tests {
     }
 
     #[test]
-    fn test_lex_num() {
-        assert_eq!(lex_to_tokens("0"), &[Token::Num("0".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("1"), &[Token::Num("1".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("2"), &[Token::Num("2".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("3"), &[Token::Num("3".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("4"), &[Token::Num("4".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("5"), &[Token::Num("5".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("6"), &[Token::Num("6".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("7"), &[Token::Num("7".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("8"), &[Token::Num("8".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("9"), &[Token::Num("9".to_string()), Token::Eof]);
-        assert_eq!(lex_to_tokens("0123456789"), &[Token::Num("0123456789".to_string()), Token::Eof]);
+    fn test_lex_int_num() {
+        assert_eq!(lex_to_tokens("0"), &[Token::IntNum("0".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("1"), &[Token::IntNum("1".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("2"), &[Token::IntNum("2".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("3"), &[Token::IntNum("3".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("4"), &[Token::IntNum("4".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("5"), &[Token::IntNum("5".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("6"), &[Token::IntNum("6".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("7"), &[Token::IntNum("7".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("8"), &[Token::IntNum("8".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("9"), &[Token::IntNum("9".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("123456789"), &[Token::IntNum("123456789".to_string()), Token::Eof]);
+    }
+
+    #[test]
+    fn test_lex_real_num() {
+        assert_eq!(lex_to_tokens("0.0"), &[Token::RealNum("0.0".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("0.5"), &[Token::RealNum("0.5".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("1.0"), &[Token::RealNum("1.0".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("1.25"), &[Token::RealNum("1.25".to_string()), Token::Eof]);
+        assert_eq!(lex_to_tokens("125.125"), &[Token::RealNum("125.125".to_string()), Token::Eof]);
     }
 
     #[test]
@@ -383,7 +410,7 @@ mod tests {
             Token::Fn,
             Token::LowerIdent("a".to_string()),
             Token::Equal,
-            Token::Num("0".to_string()),
+            Token::IntNum("0".to_string()),
             Token::Semicolon,
             Token::Eof,
         ]);
