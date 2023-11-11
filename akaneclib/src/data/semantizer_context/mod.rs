@@ -23,6 +23,7 @@ pub struct SemantizerContext {
     pub var_ty_store: GenericStore<VarKey, Rc<Ty>>,
     pub cn_ty_store: GenericStore<CnKey, Rc<Ty>>,
     pub bind_store: GenericStore<VarKey, Rc<Abs>>,
+    pub arg_store: GenericStore<VarKey, (Rc<Abs>, usize)>,
     pub generic_ty_store: GenericStore<TyKey, Rc<RefCell<HashMap<TVarKey, Rc<Ty>>>>>
 }
 
@@ -42,6 +43,7 @@ impl SemantizerContext {
             var_ty_store: GenericStore::new(),
             cn_ty_store: GenericStore::new(),
             bind_store: GenericStore::new(),
+            arg_store: GenericStore::new(),
             generic_ty_store: GenericStore::new(),
         };
         let top = Qual::new_or_get(&mut ctx, &QualKey::top());

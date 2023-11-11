@@ -97,14 +97,12 @@ fn visit_fn_def(ctx: &mut SemantizerContext, fn_def_ast: &FnDefAst) -> Result<Rc
     if arg_tys.len() != arg_names.len() {
         bail_ast_with_line!(errs, fn_def_ast.left_fn_def, "Defferent argument count between type annotation and function definition: `{}`{}", name);
     }
-    let abs_key = AbsKey::new(ctx.abs_store.next_id());
     let args =
         try_with_errors!(
             arg_names.iter()
             .zip(arg_tys)
-            .enumerate()
-            .map(|(i, (name, arg_ty))| {
-                let arg = Var::new_as_arg(ctx, qual.clone(), name.clone(), Arg::new(abs_key.clone(), i))?;
+            .map(|(name, arg_ty)| {
+                let arg = Var::new(ctx, qual.clone(), name.clone())?;
                 arg.set_ty(ctx, arg_ty.clone()).unwrap();
                 Ok(arg)
             })
@@ -116,7 +114,10 @@ fn visit_fn_def(ctx: &mut SemantizerContext, fn_def_ast: &FnDefAst) -> Result<Rc
     if !matches!(expr.ty(ctx), Ok(ty) if ty == ret_ty) {
         bail_ast_with_line!(errs, fn_def_ast.left_fn_def, "Defferent type between type annotation and function body: `{}`{}", name);
     }
-    let abs = Abs::new(ctx, args, expr);
+    let abs = Abs::new(ctx, args.clone(), expr);
+    for (i, arg) in args.iter().enumerate() {
+        ctx.arg_store.insert(arg.to_key(), (abs.clone(), i)).unwrap();
+    }
     try_with_errors!(ctx.bind_store.insert(var.to_key(), abs), fn_def_ast.left_fn_def, errs);
     try_with_errors!(ctx.qual_stack.pop(), fn_def_ast.left_fn_def, errs);
     Ok(var)
