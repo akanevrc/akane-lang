@@ -2,11 +2,7 @@ mod qual_stack;
 
 pub use qual_stack::*;
 
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-    rc::Rc,
-};
+use std::rc::Rc;
 use crate::data::*;
 
 pub struct SemantizerContext {
@@ -24,7 +20,6 @@ pub struct SemantizerContext {
     pub cn_ty_store: GenericStore<CnKey, Rc<Ty>>,
     pub bind_store: GenericStore<VarKey, Rc<Abs>>,
     pub arg_store: GenericStore<VarKey, (Rc<Abs>, usize)>,
-    pub generic_ty_store: GenericStore<TyKey, Rc<RefCell<HashMap<TVarKey, Rc<Ty>>>>>
 }
 
 impl SemantizerContext {
@@ -44,7 +39,6 @@ impl SemantizerContext {
             cn_ty_store: GenericStore::new(),
             bind_store: GenericStore::new(),
             arg_store: GenericStore::new(),
-            generic_ty_store: GenericStore::new(),
         };
         let top = Qual::new_or_get(&mut ctx, &QualKey::top());
         Ty::new_or_get_as_base(&mut ctx, "Bottom".to_owned());

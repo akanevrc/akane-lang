@@ -110,37 +110,21 @@ impl Ty {
     }
 
     pub fn new_or_get_as_tvar(ctx: &mut SemantizerContext, qual: Rc<Qual>, name: String) -> Rc<Self> {
-        let tvar = TVar::new_or_get(ctx, qual, name);
-        let val = Rc::new(Self::TVar(tvar.clone()));
+        let val = Rc::new(Self::TVar(TVar::new_or_get(ctx, qual, name)));
         let key = val.to_key();
-        if let Ok(_) = ctx.ty_store.insert(key.clone(), val.clone()) {
-            let bottom = Self::bottom(ctx);
-            ctx.generic_ty_store.insert_into_map(key.clone(), tvar.to_key(), bottom).unwrap();
-        }
-        val
+        ctx.ty_store.insert_or_get(key, val)
     }
 
     pub fn new_or_get_as_base(ctx: &mut SemantizerContext, name: String) -> Rc<Self> {
         let val = Rc::new(Self::Base(Base::new_or_get(ctx, name)));
         let key = val.to_key();
-        if let Ok(_) = ctx.ty_store.insert(key.clone(), val.clone()) {
-            ctx.generic_ty_store.insert_new_map(key).unwrap();
-        }
-        val
+        ctx.ty_store.insert_or_get(key, val)
     }
 
     pub fn new_or_get_as_arrow(ctx: &mut SemantizerContext, in_ty: Rc<Ty>, out_ty: Rc<Ty>) -> Rc<Self> {
         let val = Rc::new(Self::Arrow(Arrow::new_or_get(ctx, in_ty.clone(), out_ty.clone())));
         let key = val.to_key();
-        if let Ok(_) = ctx.ty_store.insert(key.clone(), val.clone()) {
-            ctx.generic_ty_store.insert_new_map(key.clone()).unwrap();
-            let in_ty_generics = ctx.generic_ty_store.get(&in_ty.to_key()).unwrap();
-            let out_ty_generics = ctx.generic_ty_store.get(&out_ty.to_key()).unwrap();
-            for (generic_key, generic_val) in in_ty_generics.borrow().iter().chain(out_ty_generics.borrow().iter()) {
-                ctx.generic_ty_store.insert_into_map(key.clone(), generic_key.clone(), generic_val.clone()).unwrap();
-            }
-        }
-        val
+        ctx.ty_store.insert_or_get(key, val)
     }
 
     pub fn new_or_get_as_fn_ty(ctx: &mut SemantizerContext, in_tys: Vec<Rc<Ty>>, out_ty: Rc<Ty>) -> Rc<Self> {
