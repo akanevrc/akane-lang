@@ -18,7 +18,7 @@ use crate::{
     llvm,
 };
 
-pub fn generate(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext) -> Result<()> {
+pub fn generate(cg_ctx: &mut CodeGenContext, sem_ctx: &SemantizerContext) -> Result<()> {
     for (var, abs) in sem_ctx.bind_store.keys_and_vals() {
         generate_fn(cg_ctx, sem_ctx, var.get_val(sem_ctx).unwrap(), abs.clone())?;
     }
