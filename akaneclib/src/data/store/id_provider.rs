@@ -3,6 +3,7 @@ pub trait IdProvider {
     fn next_id(&self) -> usize;
 }
 
+#[derive(Debug)]
 pub struct IdVal {
     id: usize,
 }

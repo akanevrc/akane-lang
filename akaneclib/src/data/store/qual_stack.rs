@@ -5,6 +5,7 @@ use anyhow::{
 };
 use crate::data::*;
 
+#[derive(Debug)]
 pub struct QualStack {
     stack: Vec<QualKey>,
 }

@@ -1,4 +1,7 @@
-use std::rc::Rc;
+use std::{
+    cell::RefCell,
+    rc::Rc,
+};
 use anyhow::Result;
 use crate::{
     impl_construct_val,
@@ -11,6 +14,8 @@ pub struct Var {
     pub id: usize,
     pub qual: Rc<Qual>,
     pub name: String,
+    pub ty: Rc<RefCell<Rc<Ty>>>,
+    pub abs: RefCell<Option<Rc<Abs>>>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -53,32 +58,32 @@ impl Construct for VarKey {
 }
 
 impl Var {
-    pub fn new(ctx: &mut SemantizerContext, qual: Rc<Qual>, name: String) -> Result<Rc<Self>> {
+    pub fn new(ctx: &mut SemantizerContext, qual: Rc<Qual>, name: String, ty: Rc<Ty>) -> Result<Rc<Self>> {
         let val = Rc::new(Self {
             id: ctx.var_store.next_id(),
             qual,
             name,
+            ty: Rc::new(RefCell::new(ty)),
+            abs: RefCell::new(None),
         });
         let key = val.to_key();
         ctx.var_store.insert(key, val)
     }
 
-    pub fn new_or_get(ctx: &mut SemantizerContext, qual: Rc<Qual>, name: String) -> Rc<Self> {
+    pub fn new_or_get(ctx: &mut SemantizerContext, qual: Rc<Qual>, name: String, ty: Rc<Ty>) -> Rc<Self> {
         let val = Rc::new(Self {
             id: ctx.var_store.next_id(),
             qual,
             name,
+            ty: Rc::new(RefCell::new(ty)),
+            abs: RefCell::new(None),
         });
         let key = val.to_key();
         ctx.var_store.insert_or_get(key, val)
     }
 
-    pub fn ty(&self, ctx: &SemantizerContext) -> Result<Rc<Ty>> {
-        ctx.var_ty_store.get(&self.to_key()).map(|ty| ty.clone())
-    }
-
-    pub fn set_ty(&self, ctx: &mut SemantizerContext, ty: Rc<Ty>) -> Result<()> {
-        ctx.var_ty_store.insert(self.to_key(), ty)
+    pub fn is_arg(&self) -> bool {
+        self.abs.borrow().is_none()
     }
 }
 

@@ -4,29 +4,47 @@ fn zero = 0;
 ty I64
 fn one = 1;
 
-ty I64 -> I64
+ty a -> a
 fn id x = x;
+
+ty I64 -> I64
+fn idI x = id x;
+
+ty F64 -> F64
+fn idF x = id x;
 
 ty I64
 fn nestedIdOne = id (id one);
 
 ty I64 -> I64 -> I64
-fn addValues x y = x + y;
+fn addI x y = x + y;
 
 ty I64 -> I64 -> I64
-fn subValues x y = x - y;
+fn subI x y = x - y;
 
 ty I64 -> I64 -> I64
-fn mulValues x y = x * y;
+fn mulI x y = x * y;
 
 ty I64 -> I64 -> I64
-fn divValues x y = x / y;
+fn divI x y = x / y;
 
 ty I64 -> I64 -> I64 -> I64 -> I64
-fn addMulValues x y z w = x * y + z * w;
-
-ty I64 -> I64 -> I64
-fn pipelineAddValues x y = id <| x + y;
+fn addMulI x y z w = x * y + z * w;
 
 ty F64
 fn onePointFive = 1.5;
+
+ty F64 -> F64 -> F64
+fn addF x y = x + y;
+
+ty F64 -> F64 -> F64
+fn subF x y = x - y;
+
+ty F64 -> F64 -> F64
+fn mulF x y = x * y;
+
+ty F64 -> F64 -> F64
+fn divF x y = x / y;
+
+ty F64 -> F64 -> F64 -> F64 -> F64
+fn addMulF x y z w = x * y + z * w;

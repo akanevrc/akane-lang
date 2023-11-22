@@ -74,7 +74,7 @@ pub enum ExprEnum<'input> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct AppAst<'input> {
     pub fn_expr: Rc<ExprAst<'input>>,
-    pub arg_expr: Rc<ExprAst<'input>>,
+    pub arg_expr: Option<Rc<ExprAst<'input>>>,
     pub str_info: StrInfo<'input>,
 }
 

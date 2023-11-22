@@ -267,11 +267,19 @@ fn assume_expr<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'inp
 fn assume_term<'input>(tokens: &mut Peekable<impl Iterator<Item = TokenInfo<'input>>>) -> Result<Option<Rc<ExprAst<'input>>>> {
     if let Some(factor) = assume_factor(tokens)? {
         let mut term = factor.clone();
-        while let Some(f) = assume_factor(tokens)? {
+        while let Some(mut f) = assume_factor(tokens)? {
+            if let ExprAst { expr_enum: ExprEnum::Var(_), str_info } = f.as_ref() {
+                f = app_expr_ast(unary_app_ast(f.clone(), str_info.clone()), str_info.clone())
+            }
             let extended = factor.str_info.extend(&f.str_info);
             term = app_expr_ast(app_ast(term, f, extended.clone()), extended);
         }
-        Ok(Some(term))
+        if let ExprAst { expr_enum: ExprEnum::Var(_), str_info } = term.as_ref() {
+            Ok(Some(app_expr_ast(unary_app_ast(term.clone(), str_info.clone()), str_info.clone())))
+        }
+        else {
+            Ok(Some(term))
+        }
     }
     else {
         Ok(None)
@@ -519,6 +527,10 @@ mod tests {
         data::app_ast(fn_expr, arg_expr, dummy_info())
     }
 
+    fn unary_app_ast<'input>(fn_expr: Rc<ExprAst<'input>>) -> AppAst<'input> {
+        data::unary_app_ast(fn_expr, dummy_info())
+    }
+
     fn prefix_op_ast<'input>(op_code: &'input str, rhs: Rc<ExprAst<'input>>) -> AppAst<'input> {
         data::prefix_op_ast(op_code.to_owned(), rhs, dummy_info(), dummy_info())
     }
@@ -574,7 +586,7 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &["a"]),
-                    var_expr_ast(var_ast("a")),
+                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("a")))),
                 ),
             ),
         ]);
@@ -582,7 +594,7 @@ mod tests {
             top_fn_def_ast(
                 fn_def_ast(
                     left_fn_def_ast("f", &[]),
-                    var_expr_ast(var_ast("f")),
+                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("f")))),
                 ),
             ),
         ]);
@@ -637,7 +649,7 @@ mod tests {
                     app_expr_ast(
                         app_ast(
                             var_expr_ast(var_ast("g")),
-                            var_expr_ast(var_ast("a")),
+                            app_expr_ast(unary_app_ast(var_expr_ast(var_ast("a")))),
                         ),
                     ),
                 ),
@@ -652,10 +664,10 @@ mod tests {
                             app_expr_ast(
                                 app_ast(
                                     var_expr_ast(var_ast("g")),
-                                    var_expr_ast(var_ast("a")),
+                                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("a")))),
                                 ),
                             ),
-                            var_expr_ast(var_ast("b")),
+                            app_expr_ast(unary_app_ast(var_expr_ast(var_ast("b")))),
                         ),
                     ),
                 ),
@@ -672,7 +684,7 @@ mod tests {
                     app_expr_ast(
                         infix_op_ast(
                             "add",
-                            var_expr_ast(var_ast("a")),
+                            app_expr_ast(unary_app_ast(var_expr_ast(var_ast("a")))),
                             int_num_expr_ast(int_num_ast("1")),
                         ),
                     ),
@@ -692,18 +704,18 @@ mod tests {
                                     app_expr_ast(
                                         app_ast(
                                             var_expr_ast(var_ast("g")),
-                                            var_expr_ast(var_ast("a")),
+                                            app_expr_ast(unary_app_ast(var_expr_ast(var_ast("a")))),
                                         ),
                                     ),
                                     app_expr_ast(
                                         app_ast(
                                             var_expr_ast(var_ast("g")),
-                                            var_expr_ast(var_ast("b")),
+                                            app_expr_ast(unary_app_ast(var_expr_ast(var_ast("b")))),
                                         ),
                                     ),
                                 ),
                             ),
-                            var_expr_ast(var_ast("c")),
+                            app_expr_ast(unary_app_ast(var_expr_ast(var_ast("c")))),
                         ),
                     ),
                 ),
@@ -723,11 +735,11 @@ mod tests {
                             app_expr_ast(
                                 infix_op_ast(
                                     "mul",
-                                    var_expr_ast(var_ast("a")),
-                                    var_expr_ast(var_ast("b")),
+                                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("a")))),
+                                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("b")))),
                                 ),
                             ),
-                            var_expr_ast(var_ast("c")),
+                            app_expr_ast(unary_app_ast(var_expr_ast(var_ast("c")))),
                         ),
                     ),
                 ),
@@ -740,12 +752,12 @@ mod tests {
                     app_expr_ast(
                         infix_op_ast(
                             "add",
-                            var_expr_ast(var_ast("a")),
+                            app_expr_ast(unary_app_ast(var_expr_ast(var_ast("a")))),
                             app_expr_ast(
                                 infix_op_ast(
                                     "mul",
-                                    var_expr_ast(var_ast("b")),
-                                    var_expr_ast(var_ast("c")),
+                                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("b")))),
+                                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("c")))),
                                 ),
                             ),
                         ),
@@ -764,12 +776,12 @@ mod tests {
                     app_expr_ast(
                         infix_op_ast(
                             "pipelineL",
-                            var_expr_ast(var_ast("a")),
+                            app_expr_ast(unary_app_ast(var_expr_ast(var_ast("a")))),
                             app_expr_ast(
                                 infix_op_ast(
                                     "pipelineL",
-                                    var_expr_ast(var_ast("b")),
-                                    var_expr_ast(var_ast("c")),
+                                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("b")))),
+                                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("c")))),
                                 ),
                             ),
                         ),
@@ -791,11 +803,11 @@ mod tests {
                             app_expr_ast(
                                 infix_op_ast(
                                     "add",
-                                    var_expr_ast(var_ast("a")),
-                                    var_expr_ast(var_ast("b")),
+                                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("a")))),
+                                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("b")))),
                                 ),
                             ),
-                            var_expr_ast(var_ast("c")),
+                            app_expr_ast(unary_app_ast(var_expr_ast(var_ast("c")))),
                         ),
                     ),
                 ),
@@ -808,12 +820,12 @@ mod tests {
                     app_expr_ast(
                         infix_op_ast(
                             "add",
-                            var_expr_ast(var_ast("a")),
+                            app_expr_ast(unary_app_ast(var_expr_ast(var_ast("a")))),
                             app_expr_ast(
                                 infix_op_ast(
                                     "add",
-                                    var_expr_ast(var_ast("b")),
-                                    var_expr_ast(var_ast("c")),
+                                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("b")))),
+                                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("c")))),
                                 ),
                             ),
                         ),
@@ -848,7 +860,7 @@ mod tests {
                             app_expr_ast(
                                 prefix_op_ast(
                                     "negate",
-                                    var_expr_ast(var_ast("a")),
+                                    app_expr_ast(unary_app_ast(var_expr_ast(var_ast("a")))),
                                 ),
                             ),
                             int_num_expr_ast(int_num_ast("1")),
@@ -898,7 +910,7 @@ mod tests {
                     app_expr_ast(
                         app_ast(
                             var_expr_ast(var_ast("a")),
-                            var_expr_ast(var_ast("b")),
+                            app_expr_ast(unary_app_ast(var_expr_ast(var_ast("b")))),
                         ),
                     ),
                 ),

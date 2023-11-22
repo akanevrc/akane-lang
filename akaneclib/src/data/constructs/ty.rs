@@ -1,9 +1,17 @@
 use std::{
+    collections::{
+        HashMap,
+        HashSet,
+    },
     hash::{
         Hash,
         Hasher,
     },
     rc::Rc,
+};
+use anyhow::{
+    bail,
+    Result,
 };
 use crate::{
     impl_construct_key,
@@ -106,7 +114,7 @@ impl Construct for TyKey {
 
 impl Ty {
     pub fn bottom(ctx: &mut SemantizerContext) -> Rc<Self> {
-        TyKey::new_as_base("Bottom".to_owned()).get_val(ctx).unwrap()
+        TyKey::bottom().get_val(ctx).unwrap()
     }
 
     pub fn new_or_get_as_tvar(ctx: &mut SemantizerContext, qual: Rc<Qual>, name: String) -> Rc<Self> {
@@ -165,9 +173,58 @@ impl Ty {
             Self::Arrow(arrow) => arrow.rank,
         }
     }
+
+    pub fn is_bottom(&self) -> bool {
+        self.to_key().is_bottom()
+    }
+
+    pub fn is_nondterministic(&self) -> bool {
+        self.to_key().is_nondterministic()
+    }
+
+    pub fn get_tvars(&self) -> HashSet<Rc<TVar>> {
+        match self {
+            Self::TVar(tvar) =>
+                vec![tvar.clone()].into_iter().collect(),
+            Self::Base(_) =>
+                HashSet::new(),
+            Self::Arrow(arrow) => {
+                let mut tvars = arrow.in_ty.get_tvars();
+                tvars.extend(arrow.out_ty.get_tvars());
+                tvars
+            },
+        }
+    }
+
+    pub fn apply_from(&self, ty: Rc<Self>) -> Result<HashMap<TVarKey, Rc<Ty>>> {
+        match self {
+            Self::Arrow(arrow) =>
+                arrow.in_ty.assign_from(ty),
+            _ => bail!("Cannot apply `{}` to `{}`", ty.description(), self.description()),
+        }
+    }
+
+    pub fn assign_from(&self, ty: Rc<Self>) -> Result<HashMap<TVarKey, Rc<Ty>>> {
+        match (self, ty.as_ref()) {
+            (Self::TVar(tvar), _) =>
+                Ok([(tvar.to_key(), ty)].iter().cloned().collect()),
+            (Self::Base(base), Self::Base(ty_base)) if base == ty_base =>
+                Ok(HashMap::new()),
+            (Self::Arrow(arrow), Self::Arrow(ty_arrow)) => {
+                let mut map = arrow.in_ty.assign_from(ty_arrow.in_ty.clone())?;
+                map.extend(arrow.out_ty.assign_from(ty_arrow.out_ty.clone())?);
+                Ok(map)
+            },
+            _ => bail!("Cannot assign `{}` to `{}`", ty.description(), self.description()),
+        }
+    }
 }
 
 impl TyKey {
+    pub fn bottom() -> Self {
+        Self::new_as_base("Bottom".to_owned())
+    }
+
     pub fn new_as_tvar(qual: QualKey, name: String) -> Self {
         Self::TVar(TVarKey::new(qual, name))
     }
@@ -178,5 +235,23 @@ impl TyKey {
 
     pub fn new_as_arrow(in_ty: TyKey, out_ty: TyKey) -> Self {
         Self::Arrow(ArrowKey::new(in_ty, out_ty))
+    }
+
+    pub fn is_bottom(&self) -> bool {
+        match self {
+            Self::Base(base) => base.name == "Bottom",
+            _ => false,
+        }
+    }
+
+    pub fn is_nondterministic(&self) -> bool {
+        match self {
+            Self::TVar(_) =>
+                true,
+            Self::Base(_) =>
+                false,
+            Self::Arrow(arrow) =>
+                arrow.in_ty.is_nondterministic() && arrow.out_ty.is_nondterministic(),
+        }
     }
 }

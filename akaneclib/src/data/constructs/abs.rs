@@ -1,8 +1,10 @@
-use std::rc::Rc;
-use anyhow::Result;
+use std::{
+    cell::RefCell,
+    hash::Hash,
+    rc::Rc,
+};
 use crate::{
-    impl_construct_key,
-    impl_construct_val,
+    impl_id,
     data::*,
 };
 
@@ -11,6 +13,8 @@ pub struct Abs {
     pub id: usize,
     pub args: Vec<Rc<Var>>,
     pub expr: Rc<Expr>,
+    pub ty: Rc<RefCell<Rc<Ty>>>,
+    pub ty_env_store: Rc<RefCell<TyEnvStore>>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -18,21 +22,9 @@ pub struct AbsKey {
     pub id: usize,
 }
 
-impl_construct_val!(Abs);
+impl_id!(Abs);
 
-impl ConstructVal for Abs {
-    type Key = AbsKey;
-
-    fn to_key(&self) -> Self::Key {
-        Self::Key {
-            id: self.id,
-        }
-    }
-}
-
-impl_construct_key!(AbsKey, Abs, abs_store);
-
-impl Construct for AbsKey {
+impl Construct for Abs {
     fn logical_name(&self) -> String {
         format!("fn.{}", self.id)
     }
@@ -43,18 +35,26 @@ impl Construct for AbsKey {
 }
 
 impl Abs {
-    pub fn new(ctx: &mut SemantizerContext, args: Vec<Rc<Var>>, expr: Rc<Expr>) -> Rc<Self> {
+    pub fn new_as_var_with_id(ctx: &mut SemantizerContext, id: usize, args: Vec<Rc<Var>>, expr: Rc<Expr>, var: Rc<Var>) -> Rc<Self> {
+        let in_tys = args.iter().map(|arg| arg.ty.borrow().clone()).collect();
+        let out_ty = expr.ty().borrow().clone();
+        let ty = Ty::new_or_get_as_fn_ty(ctx, in_tys, out_ty);
+        let tvars = ty.get_tvars();
+        let tvars = tvars.into_iter().map(|tvar| tvar.to_key()).collect();
+        let ty_env_store = TyEnvStore::new(tvars);
         let val = Rc::new(Self {
-            id: ctx.abs_store.next_id(),
-            args,
-            expr,
+            id,
+            args: args.clone(),
+            expr: expr.clone(),
+            ty: Rc::new(RefCell::new(ty)),
+            ty_env_store,
         });
-        let key = val.to_key();
-        ctx.abs_store.insert_or_get(key, val)
+        var.abs.replace(Some(val.clone()));
+        ctx.abs_store.insert(id, val).unwrap()
     }
 
-    pub fn ty(&self, ctx: &SemantizerContext) -> Result<Rc<Ty>> {
-        self.expr.ty(ctx)
+    pub fn ret_ty(&self) -> Rc<RefCell<Rc<Ty>>> {
+        self.expr.ty()
     }
 }
 

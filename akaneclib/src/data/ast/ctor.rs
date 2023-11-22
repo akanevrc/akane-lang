@@ -54,7 +54,11 @@ pub fn real_num_expr_ast<'input>(real_num_ast: RealNumAst<'input>, str_info: Str
 }
 
 pub fn app_ast<'input>(fn_expr: Rc<ExprAst<'input>>, arg_expr: Rc<ExprAst<'input>>, str_info: StrInfo<'input>) -> AppAst<'input> {
-    AppAst { fn_expr, arg_expr, str_info }
+    AppAst { fn_expr, arg_expr: Some(arg_expr), str_info }
+}
+
+pub fn unary_app_ast<'input>(fn_expr: Rc<ExprAst<'input>>, str_info: StrInfo<'input>) -> AppAst<'input> {
+    AppAst { fn_expr, arg_expr: None, str_info }
 }
 
 pub fn prefix_op_ast<'input>(op_code: String, rhs: Rc<ExprAst<'input>>, str_info: StrInfo<'input>, op_code_info: StrInfo<'input>) -> AppAst<'input> {

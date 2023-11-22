@@ -1,3 +1,7 @@
+use std::{
+    cell::RefCell,
+    rc::Rc,
+};
 use inkwell::{
     OptimizationLevel,
     builder::Builder,
@@ -16,8 +20,9 @@ pub struct CodeGenContext<'ctx> {
     pub module: Module<'ctx>,
     pub builder: Builder<'ctx>,
     pub execution_engine: ExecutionEngine<'ctx>,
-    pub bound_values: GenericStore<VarKey, AnyValueEnum<'ctx>>,
-    pub functions: GenericStore<AbsKey, FunctionValue<'ctx>>,
+    pub bound_values: GenericStore<String, AnyValueEnum<'ctx>>,
+    pub functions: GenericStore<String, FunctionValue<'ctx>>,
+    pub ty_env_stack: Vec<Rc<RefCell<TyEnv>>>,
 }
 
 impl<'ctx> CodeGenContext<'ctx> {
@@ -32,6 +37,7 @@ impl<'ctx> CodeGenContext<'ctx> {
             execution_engine,
             bound_values: GenericStore::new(),
             functions: GenericStore::new(),
+            ty_env_stack: Vec::new(),
         }
     }
 }

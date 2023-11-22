@@ -1,4 +1,7 @@
-use std::rc::Rc;
+use std::{
+    cell::RefCell,
+    rc::Rc,
+};
 use anyhow::Result;
 use crate::{
     impl_construct_val,
@@ -10,6 +13,7 @@ use crate::{
 pub struct Cn {
     pub id: usize,
     pub name: String,
+    pub ty: Rc<RefCell<Rc<Ty>>>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -54,11 +58,10 @@ impl Cn {
         let val = Rc::new(Self {
             id: ctx.var_store.next_id(),
             name: name.clone(),
+            ty: Rc::new(RefCell::new(ty)),
         });
         let key = val.to_key();
-        ctx.cn_store.insert(key.clone(), val.clone())?;
-        ctx.cn_ty_store.insert(key, ty).unwrap();
-        Ok(val)
+        ctx.cn_store.insert(key, val)
     }
 
     pub fn new_or_get_as_i64(ctx: &mut SemantizerContext, name: String) -> Rc<Self> {
@@ -73,18 +76,10 @@ impl Cn {
         let val = Rc::new(Self {
             id: ctx.var_store.next_id(),
             name: name.clone(),
+            ty: Rc::new(RefCell::new(ty)),
         });
         let key = val.to_key();
-        match ctx.cn_store.insert(key.clone(), val.clone()) {
-            Ok(_) =>
-                ctx.cn_ty_store.insert(key, ty).unwrap(),
-            Err(_) => (),
-        }
-        val
-    }
-
-    pub fn ty(&self, ctx: &SemantizerContext) -> Rc<Ty> {
-        ctx.cn_ty_store.get(&self.to_key()).unwrap().clone()
+        ctx.cn_store.insert_or_get(key, val)
     }
 }
 

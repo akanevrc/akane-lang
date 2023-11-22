@@ -15,6 +15,7 @@ use inkwell::{
         IntType,
     },
     values::{
+        AnyValue,
         AnyValueEnum,
         BasicValue,
         BasicValueEnum,
@@ -27,15 +28,13 @@ use inkwell::{
 use crate::data::*;
 
 pub fn get_const_from_cn<'ctx>(cg_ctx: &CodeGenContext<'ctx>, sem_ctx: &SemantizerContext, cn: Rc<Cn>) -> Result<BasicValueEnum<'ctx>> {
-    match sem_ctx.cn_ty_store.get(&cn.to_key()) {
-        Ok(ty) if ty == TyKey::new_as_base("I64".to_owned()).get_val(sem_ctx).unwrap() =>
+    match cn.ty.borrow().clone() {
+        ty if ty == TyKey::new_as_base("I64".to_owned()).get_val(sem_ctx).unwrap() =>
             get_const_i64(cg_ctx, cn.name.parse::<i64>().unwrap()).map(|value| value.as_basic_value_enum()),
-        Ok(ty) if ty == TyKey::new_as_base("F64".to_owned()).get_val(sem_ctx).unwrap() =>
+        ty if ty == TyKey::new_as_base("F64".to_owned()).get_val(sem_ctx).unwrap() =>
             get_const_f64(cg_ctx, cn.name.parse::<f64>().unwrap()).map(|value| value.as_basic_value_enum()),
-        Ok(_) =>
+        _ =>
             bail!("Unsupported constant type: {}", cn.description()),
-        Err(_) =>
-            bail!("Key not found: `{}`", cn.description()),
     }
 }
 
@@ -47,12 +46,7 @@ pub fn get_const_f64<'ctx>(cg_ctx: &CodeGenContext<'ctx>, value: f64) -> Result<
     Ok(cg_ctx.context.f64_type().const_float(value))
 }
 
-pub fn build_call_without_args<'ctx>(cg_ctx: &CodeGenContext<'ctx>, function: FunctionValue<'ctx>) -> Result<BasicValueEnum<'ctx>> {
-    cg_ctx.builder.build_call(function, &[], "")?
-    .try_as_basic_value().left().ok_or_else(|| anyhow!("Not a basic value"))
-}
-
-pub fn build_call_with_args<'ctx>(cg_ctx: &CodeGenContext<'ctx>, function: FunctionValue<'ctx>, arguments: &[BasicMetadataValueEnum<'ctx>]) -> Result<BasicValueEnum<'ctx>> {
+pub fn build_call<'ctx>(cg_ctx: &CodeGenContext<'ctx>, function: FunctionValue<'ctx>, arguments: &[BasicMetadataValueEnum<'ctx>]) -> Result<BasicValueEnum<'ctx>> {
     cg_ctx.builder.build_call(function, arguments, "")?
     .try_as_basic_value().left().ok_or_else(|| anyhow!("Not a basic value"))
 }
@@ -108,18 +102,78 @@ pub fn build_function<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, function: Functio
     Ok(())
 }
 
-pub fn build_add<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
-    Ok(cg_ctx.builder.build_int_add(lhs, rhs, "")?.into())
+pub fn build_add<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: AnyValueEnum<'ctx>, rhs: AnyValueEnum<'ctx>) -> Result<AnyValueEnum<'ctx>> {
+    match (lhs, rhs) {
+        (lhs, rhs) if lhs.is_int_value() && rhs.is_int_value() =>
+            build_int_add(cg_ctx, lhs.into_int_value(), rhs.into_int_value()).map(|value| value.as_any_value_enum()),
+        (lhs, rhs) if lhs.is_float_value() && rhs.is_float_value() =>
+            build_float_add(cg_ctx, lhs.into_float_value(), rhs.into_float_value()).map(|value| value.as_any_value_enum()),
+        (_, _) =>
+            bail!("Unsupported type: {:?} + {:?}", lhs, rhs),
+    }
 }
 
-pub fn build_sub<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
-    Ok(cg_ctx.builder.build_int_sub(lhs, rhs, "")?.into())
+pub fn build_sub<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: AnyValueEnum<'ctx>, rhs: AnyValueEnum<'ctx>) -> Result<AnyValueEnum<'ctx>> {
+    match (lhs, rhs) {
+        (lhs, rhs) if lhs.is_int_value() && rhs.is_int_value() =>
+            build_int_sub(cg_ctx, lhs.into_int_value(), rhs.into_int_value()).map(|value| value.as_any_value_enum()),
+        (lhs, rhs) if lhs.is_float_value() && rhs.is_float_value() =>
+            build_float_sub(cg_ctx, lhs.into_float_value(), rhs.into_float_value()).map(|value| value.as_any_value_enum()),
+        (_, _) =>
+            bail!("Unsupported type: {:?} - {:?}", lhs, rhs),
+    }
 }
 
-pub fn build_mul<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
-    Ok(cg_ctx.builder.build_int_mul(lhs, rhs, "")?.into())
+pub fn build_mul<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: AnyValueEnum<'ctx>, rhs: AnyValueEnum<'ctx>) -> Result<AnyValueEnum<'ctx>> {
+    match (lhs, rhs) {
+        (lhs, rhs) if lhs.is_int_value() && rhs.is_int_value() =>
+            build_int_mul(cg_ctx, lhs.into_int_value(), rhs.into_int_value()).map(|value| value.as_any_value_enum()),
+        (lhs, rhs) if lhs.is_float_value() && rhs.is_float_value() =>
+            build_float_mul(cg_ctx, lhs.into_float_value(), rhs.into_float_value()).map(|value| value.as_any_value_enum()),
+        (_, _) =>
+            bail!("Unsupported type: {:?} * {:?}", lhs, rhs),
+    }
 }
 
-pub fn build_div<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>) -> Result<AnyValueEnum<'ctx>> {
-    Ok(cg_ctx.builder.build_int_signed_div(lhs, rhs, "")?.into())
+pub fn build_div<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: AnyValueEnum<'ctx>, rhs: AnyValueEnum<'ctx>) -> Result<AnyValueEnum<'ctx>> {
+    match (lhs, rhs) {
+        (lhs, rhs) if lhs.is_int_value() && rhs.is_int_value() =>
+            build_int_div(cg_ctx, lhs.into_int_value(), rhs.into_int_value()).map(|value| value.as_any_value_enum()),
+        (lhs, rhs) if lhs.is_float_value() && rhs.is_float_value() =>
+            build_float_div(cg_ctx, lhs.into_float_value(), rhs.into_float_value()).map(|value| value.as_any_value_enum()),
+        (_, _) =>
+            bail!("Unsupported type: {:?} / {:?}", lhs, rhs),
+    }
+}
+
+pub fn build_int_add<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>) -> Result<IntValue<'ctx>> {
+    Ok(cg_ctx.builder.build_int_add(lhs, rhs, "")?)
+}
+
+pub fn build_int_sub<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>) -> Result<IntValue<'ctx>> {
+    Ok(cg_ctx.builder.build_int_sub(lhs, rhs, "")?)
+}
+
+pub fn build_int_mul<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>) -> Result<IntValue<'ctx>> {
+    Ok(cg_ctx.builder.build_int_mul(lhs, rhs, "")?)
+}
+
+pub fn build_int_div<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>) -> Result<IntValue<'ctx>> {
+    Ok(cg_ctx.builder.build_int_signed_div(lhs, rhs, "")?)
+}
+
+pub fn build_float_add<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: FloatValue<'ctx>, rhs: FloatValue<'ctx>) -> Result<FloatValue<'ctx>> {
+    Ok(cg_ctx.builder.build_float_add(lhs, rhs, "")?)
+}
+
+pub fn build_float_sub<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: FloatValue<'ctx>, rhs: FloatValue<'ctx>) -> Result<FloatValue<'ctx>> {
+    Ok(cg_ctx.builder.build_float_sub(lhs, rhs, "")?)
+}
+
+pub fn build_float_mul<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: FloatValue<'ctx>, rhs: FloatValue<'ctx>) -> Result<FloatValue<'ctx>> {
+    Ok(cg_ctx.builder.build_float_mul(lhs, rhs, "")?)
+}
+
+pub fn build_float_div<'ctx>(cg_ctx: &mut CodeGenContext<'ctx>, lhs: FloatValue<'ctx>, rhs: FloatValue<'ctx>) -> Result<FloatValue<'ctx>> {
+    Ok(cg_ctx.builder.build_float_div(lhs, rhs, "")?)
 }

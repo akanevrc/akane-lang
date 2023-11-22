@@ -42,6 +42,16 @@ pub trait ConstructKey: Construct {
     fn get_val(&self, ctx: &SemantizerContext) -> Result<Rc<Self::Val>>;
 }
 
+impl Construct for usize {
+    fn logical_name(&self) -> String {
+        self.to_string()
+    }
+
+    fn description(&self) -> String {
+        self.to_string()
+    }
+}
+
 impl Construct for String {
     fn logical_name(&self) -> String {
         self.clone()

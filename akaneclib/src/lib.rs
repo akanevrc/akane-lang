@@ -20,7 +20,7 @@ pub fn compile(in_path: &str, out_path: &str) -> Result<(), Vec<Error>> {
     semantizer::semantize(&mut sem_ctx, &mut asts)?;
     let ctx = Context::create();
     let mut cg_ctx = CodeGenContext::new(&ctx);
-    codegen::generate(&mut cg_ctx, &sem_ctx).map_err(|e| vec![e])?;
+    codegen::generate(&mut cg_ctx, &mut sem_ctx).map_err(|e| vec![e])?;
     printer::print_to_file(out_path, &cg_ctx).map_err(|e| vec![e])?;
     Ok(())
 }
