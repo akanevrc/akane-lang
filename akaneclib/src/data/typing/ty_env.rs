@@ -16,8 +16,8 @@ pub struct TyEnv {
 
 impl TyEnv {
     pub fn new(tvars: &Vec<TVarKey>) -> Rc<RefCell<Self>> {
-        let bottom = TyKey::bottom();
-        let tys = tvars.iter().map(|tvar| (tvar.clone(), bottom.clone())).collect();
+        let unknown = TyKey::unknown();
+        let tys = tvars.iter().map(|tvar| (tvar.clone(), unknown.clone())).collect();
         Rc::new(RefCell::new(Self { tys }))
     }
 
@@ -46,8 +46,8 @@ impl TyEnv {
         self.tys.len() != 0
     }
 
-    pub fn is_bottom(&self) -> bool {
-        self.tys.values().any(|ty| ty.is_bottom())
+    pub fn is_unknown(&self) -> bool {
+        self.tys.values().any(|ty| ty.is_unknown())
     }
 
     pub fn is_nondterministic(&self) -> bool {

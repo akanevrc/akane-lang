@@ -113,6 +113,10 @@ impl Construct for TyKey {
 }
 
 impl Ty {
+    pub fn unknown(ctx: &mut SemantizerContext) -> Rc<Self> {
+        TyKey::unknown().get_val(ctx).unwrap()
+    }
+
     pub fn bottom(ctx: &mut SemantizerContext) -> Rc<Self> {
         TyKey::bottom().get_val(ctx).unwrap()
     }
@@ -174,6 +178,10 @@ impl Ty {
         }
     }
 
+    pub fn is_unknown(&self) -> bool {
+        self.to_key().is_unknown()
+    }
+
     pub fn is_bottom(&self) -> bool {
         self.to_key().is_bottom()
     }
@@ -221,6 +229,10 @@ impl Ty {
 }
 
 impl TyKey {
+    pub fn unknown() -> Self {
+        Self::new_as_base("Unknown".to_owned())
+    }
+
     pub fn bottom() -> Self {
         Self::new_as_base("Bottom".to_owned())
     }
@@ -235,6 +247,13 @@ impl TyKey {
 
     pub fn new_as_arrow(in_ty: TyKey, out_ty: TyKey) -> Self {
         Self::Arrow(ArrowKey::new(in_ty, out_ty))
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        match self {
+            Self::Base(base) => base.name == "Unknown",
+            _ => false,
+        }
     }
 
     pub fn is_bottom(&self) -> bool {

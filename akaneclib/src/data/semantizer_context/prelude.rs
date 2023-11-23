@@ -12,6 +12,7 @@ fn init_quals(ctx: &mut SemantizerContext) {
 }
 
 fn init_tys(ctx: &mut SemantizerContext) {
+    Ty::new_or_get_as_base(ctx, "Unknown".to_owned());
     Ty::new_or_get_as_base(ctx, "Bottom".to_owned());
     Ty::new_or_get_as_base(ctx, "I64".to_owned());
     Ty::new_or_get_as_base(ctx, "F64".to_owned());

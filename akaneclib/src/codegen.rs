@@ -45,7 +45,7 @@ pub fn generate(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext) ->
 
 fn generate_fn(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext, var: Rc<Var>, abs: Rc<Abs>, ty_env: Rc<RefCell<TyEnv>>) -> Result<()> {
     let ty_env_ref = ty_env.borrow();
-    if ty_env_ref.is_bottom() {
+    if ty_env_ref.is_unknown() {
         return Ok(());
     }
     else if ty_env_ref.is_nondterministic() {
