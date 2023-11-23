@@ -26,7 +26,7 @@ pub fn generate(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext) ->
         .collect::<Vec<_>>();
     for (_, abs) in var_abs.iter() {
         let mut ty_env_store = abs.ty_env_store.borrow_mut();
-        ty_env_store.unify();
+        ty_env_store.distinct();
     }
     for (var, abs) in var_abs {
         let ty_env_store = abs.ty_env_store.borrow();

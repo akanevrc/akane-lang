@@ -28,7 +28,7 @@ impl TyEnvStore {
         self.tvars.len() != 0
     }
 
-    pub fn unify(&mut self) {
+    pub fn distinct(&mut self) {
         let mut ty_envs = Vec::new();
         for i in 0 .. self.ty_envs.len() {
             let mut unique = true;
