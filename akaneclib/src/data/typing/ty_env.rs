@@ -27,8 +27,12 @@ impl TyEnv {
 
     pub fn assign(&mut self, tvar: TVarKey, ty: TyKey) -> Result<()> {
         if let Some(mut_ty) = self.tys.get_mut(&tvar) {
-            *mut_ty = ty;
-            Ok(())
+            if mut_ty.is_unknown() {
+                *mut_ty = ty;
+                Ok(())
+            } else {
+                bail!("Type variable `{}` is already assigned", tvar.description());
+            }
         } else {
             bail!("Unknown type variable: {}", tvar.description());
         }
