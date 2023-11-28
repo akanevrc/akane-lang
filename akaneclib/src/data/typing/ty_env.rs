@@ -9,20 +9,27 @@ use anyhow::{
 };
 use crate::data::*;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TyEnv {
-    tys: HashMap<TVarKey, TyKey>
+    tvars: Vec<TVarKey>,
+    tys: HashMap<TVarKey, TyKey>,
 }
 
 impl TyEnv {
-    pub fn new(tvars: &Vec<TVarKey>) -> Rc<RefCell<Self>> {
+    pub fn new(tvars: Vec<TVarKey>) -> Rc<RefCell<Self>> {
         let unknown = TyKey::unknown();
         let tys = tvars.iter().map(|tvar| (tvar.clone(), unknown.clone())).collect();
-        Rc::new(RefCell::new(Self { tys }))
+        Rc::new(RefCell::new(Self {
+            tvars,
+            tys,
+        }))
     }
 
     pub fn new_empty() -> Rc<RefCell<Self>> {
-        Rc::new(RefCell::new(Self { tys: HashMap::new() }))
+        Rc::new(RefCell::new(Self {
+            tvars: Vec::new(),
+            tys: HashMap::new(),
+        }))
     }
 
     pub fn assign(&mut self, tvar: TVarKey, ty: TyKey) -> Result<()> {
@@ -54,8 +61,8 @@ impl TyEnv {
         self.tys.values().any(|ty| ty.is_unknown())
     }
 
-    pub fn is_nondterministic(&self) -> bool {
-        self.tys.values().any(|ty| ty.is_nondterministic())
+    pub fn is_nondeterministic(&self) -> bool {
+        self.tys.values().any(|ty| ty.is_nondeterministic())
     }
 
     pub fn apply_tys(&mut self, ctx: &mut SemantizerContext, applied: Rc<Ty>, applying: Rc<Ty>) -> Result<Rc<Ty>> {
@@ -68,8 +75,14 @@ impl TyEnv {
     pub fn apply_env(&self, ctx: &mut SemantizerContext, ty: Rc<Ty>) -> Rc<Ty> {
         match ty.as_ref() {
             Ty::TVar(tvar) =>
-                if let Some(ty) = self.tys.get(&tvar.to_key()) {
-                    ty.get_val(ctx).unwrap()
+                if let Some(ty_key) = self.tys.get(&tvar.to_key()) {
+                    let applied = ty_key.get_val(ctx).unwrap();
+                    if applied.is_unknown() {
+                        ty
+                    }
+                    else {
+                        applied
+                    }
                 }
                 else {
                     ty
@@ -97,4 +110,60 @@ impl TyEnv {
             default_name.to_owned()
         }
     }
+
+    // pub fn concrete(&self, ctx: &SemantizerContext) -> Result<Vec<Rc<RefCell<TyEnv>>>> {
+    //     let mut concrete_tys = Vec::new();
+    //     for (tvar, ty) in self.tys.iter() {
+    //         concrete_tys.push((tvar.clone(), Self::concrete_ty(ctx, ty.clone())?));
+    //     }
+    //     let ty_envs =
+    //         self.tys_to_ty_envs(&concrete_tys, 0)
+    //         .into_iter()
+    //         .map(|ty_env| Rc::new(RefCell::new(ty_env)))
+    //         .collect();
+    //     Ok(ty_envs)
+    // }
+
+    // fn concrete_ty(ctx: &SemantizerContext, ty: TyKey) -> Result<Vec<TyKey>> {
+    //     match ty {
+    //         TyKey::TVar(tvar) => {
+    //             let id = tvar.qual.get_val(ctx)?.find_scope(|scope| {
+    //                 match scope {
+    //                     Scope::Abs(id) => Some(*id)
+    //                 }
+    //             });
+    //             if let Some(id) = id {
+    //                 let abs = ctx.abs_store.get(&id).unwrap();
+    //                 let ty_env_store = abs.ty_env_store.borrow();
+    //                 let tys =
+    //                     ty_env_store.iter()
+    //                     .map(|ty_env| Self::concrete_ty(ctx, ty_env.borrow().get(&tvar)?))
+    //                     .collect::<Result<Vec<_>>>()?
+    //                     .into_iter()
+    //                     .flat_map(|vec| vec.into_iter())
+    //                     .collect();
+    //                 Ok(tys)
+    //             }
+    //             else {
+    //                 bail!("Cannot concrete type variable: {}", tvar.description());
+    //             }
+    //         },
+    //         TyKey::Base(_) => Ok(vec![ty]),
+    //         TyKey::Arrow(_) => bail!("Arrow type is not supported yet"),
+    //     }
+    // }
+
+    // fn tys_to_ty_envs(&self, tys: &Vec<(TVarKey, Vec<TyKey>)>, index: usize) -> Vec<TyEnv> {
+    //     let mut ty_envs = Vec::new();
+    //     if index == tys.len() {
+    //         ty_envs.push(self.clone());
+    //         return ty_envs;
+    //     }
+    //     for ty in tys[index].1.iter() {
+    //         let mut ty_env = self.clone();
+    //         ty_env.tys.insert(tys[index].0.clone(), ty.clone());
+    //         ty_envs.extend(ty_env.tys_to_ty_envs(tys, index + 1));
+    //     }
+    //     ty_envs
+    // }
 }

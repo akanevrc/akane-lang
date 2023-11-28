@@ -121,22 +121,37 @@ impl Ty {
         TyKey::bottom().get_val(ctx).unwrap()
     }
 
-    pub fn new_or_get_as_tvar(ctx: &mut SemantizerContext, qual: Rc<Qual>, name: String) -> Rc<Self> {
-        let val = Rc::new(Self::TVar(TVar::new_or_get(ctx, qual, name)));
+    pub fn new_or_get_with_tvar(ctx: &mut SemantizerContext, tvar: Rc<TVar>) -> Rc<Self> {
+        let val = Rc::new(Self::TVar(tvar));
         let key = val.to_key();
         ctx.ty_store.insert_or_get(key, val)
+    }
+
+    pub fn new_or_get_with_base(ctx: &mut SemantizerContext, base: Rc<Base>) -> Rc<Self> {
+        let val = Rc::new(Self::Base(base));
+        let key = val.to_key();
+        ctx.ty_store.insert_or_get(key, val)
+    }
+
+    pub fn new_or_get_with_arrow(ctx: &mut SemantizerContext, arrow: Rc<Arrow>) -> Rc<Self> {
+        let val = Rc::new(Self::Arrow(arrow));
+        let key = val.to_key();
+        ctx.ty_store.insert_or_get(key, val)
+    }
+
+    pub fn new_or_get_as_tvar(ctx: &mut SemantizerContext, qual: Rc<Qual>, name: String) -> Rc<Self> {
+        let tvar = TVar::new_or_get(ctx, qual, name);
+        Self::new_or_get_with_tvar(ctx, tvar)
     }
 
     pub fn new_or_get_as_base(ctx: &mut SemantizerContext, name: String) -> Rc<Self> {
-        let val = Rc::new(Self::Base(Base::new_or_get(ctx, name)));
-        let key = val.to_key();
-        ctx.ty_store.insert_or_get(key, val)
+        let base = Base::new_or_get(ctx, name);
+        Self::new_or_get_with_base(ctx, base)
     }
 
     pub fn new_or_get_as_arrow(ctx: &mut SemantizerContext, in_ty: Rc<Ty>, out_ty: Rc<Ty>) -> Rc<Self> {
-        let val = Rc::new(Self::Arrow(Arrow::new_or_get(ctx, in_ty.clone(), out_ty.clone())));
-        let key = val.to_key();
-        ctx.ty_store.insert_or_get(key, val)
+        let arrow = Arrow::new_or_get(ctx, in_ty, out_ty);
+        Self::new_or_get_with_arrow(ctx, arrow)
     }
 
     pub fn new_or_get_as_fn_ty(ctx: &mut SemantizerContext, in_tys: Vec<Rc<Ty>>, out_ty: Rc<Ty>) -> Rc<Self> {
@@ -186,8 +201,8 @@ impl Ty {
         self.to_key().is_bottom()
     }
 
-    pub fn is_nondterministic(&self) -> bool {
-        self.to_key().is_nondterministic()
+    pub fn is_nondeterministic(&self) -> bool {
+        self.to_key().is_nondeterministic()
     }
 
     pub fn get_tvars(&self) -> HashSet<Rc<TVar>> {
@@ -263,14 +278,14 @@ impl TyKey {
         }
     }
 
-    pub fn is_nondterministic(&self) -> bool {
+    pub fn is_nondeterministic(&self) -> bool {
         match self {
             Self::TVar(_) =>
                 true,
             Self::Base(_) =>
                 false,
             Self::Arrow(arrow) =>
-                arrow.in_ty.is_nondterministic() && arrow.out_ty.is_nondterministic(),
+                arrow.in_ty.is_nondeterministic() || arrow.out_ty.is_nondeterministic(),
         }
     }
 }

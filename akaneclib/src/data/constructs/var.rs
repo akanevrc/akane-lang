@@ -85,6 +85,11 @@ impl Var {
     pub fn is_arg(&self) -> bool {
         self.abs.borrow().is_none()
     }
+
+    pub fn clone_arg_with_ty_env(&self, ctx: &mut SemantizerContext, ty_env: Rc<RefCell<TyEnv>>) -> Rc<Self> {
+        let ty = ty_env.borrow().apply_env(ctx, self.ty.borrow().clone());
+        Self::new_or_get(ctx, self.qual.clone(), self.name.clone(), ty)
+    }
 }
 
 impl VarKey {

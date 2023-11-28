@@ -78,6 +78,22 @@ impl Construct for Expr {
 }
 
 impl Expr {
+    pub fn new_with_var(var: Rc<Var>) -> Rc<Self> {
+        Rc::new(Self::Var(var))
+    }
+
+    pub fn new_with_cn(cn: Rc<Cn>) -> Rc<Self> {
+        Rc::new(Self::Cn(cn))
+    }
+
+    pub fn new_with_abs(abs: Rc<Abs>) -> Rc<Self> {
+        Rc::new(Self::Abs(abs))
+    }
+
+    pub fn new_with_app(app: Rc<App>) -> Rc<Self> {
+        Rc::new(Self::App(app))
+    }
+
     pub fn ty(&self) -> Rc<RefCell<Rc<Ty>>> {
         match self {
             Self::Var(var) =>
@@ -88,6 +104,32 @@ impl Expr {
                 abs.ty.clone(),
             Self::App(app) =>
                 app.ty.clone(),
+        }
+    }
+
+    pub fn applied_ty(&self, ctx: &mut SemantizerContext) -> Rc<RefCell<Rc<Ty>>> {
+        match self {
+            Self::Var(var) =>
+                var.ty.clone(),
+            Self::Cn(cn) =>
+                cn.ty.clone(),
+            Self::Abs(abs) =>
+                abs.ty.clone(),
+            Self::App(app) =>
+                Rc::new(RefCell::new(app.ty_env.borrow().apply_env(ctx, app.ty.borrow().clone()))),
+        }
+    }
+
+    pub fn clone_with_ty_env(self: &Rc<Self>, ctx: &mut SemantizerContext, ty_env: Rc<RefCell<TyEnv>>) -> Rc<Self> {
+        match self.as_ref() {
+            Self::Var(_) =>
+                self.clone(),
+            Self::Cn(_) =>
+                self.clone(),
+            Self::Abs(_) =>
+                self.clone(),
+            Self::App(app) =>
+                Self::new_with_app(app.clone_with_ty_env(ctx, ty_env).unwrap()),
         }
     }
 }

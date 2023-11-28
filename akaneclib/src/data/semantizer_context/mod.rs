@@ -47,9 +47,8 @@ impl SemantizerContext {
 
     pub fn find_with_qual<T>(&self, pred: impl Fn(&Self, Rc<Qual>) -> Option<T>) -> Option<T> {
         for qual in self.qual_stack.iter() {
-            match pred(self, qual.get_val(self).unwrap()) {
-                Some(x) => return Some(x),
-                None => (),
+            if let Some(t) = pred(self, qual.get_val(self).unwrap()) {
+                return Some(t);
             }
         }
         None

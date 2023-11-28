@@ -133,3 +133,11 @@ fn add_mul_f() {
         assert_eq!(ffi::addMulF(2.0, 4.0, 3.5, 5.5), 27.25);
     }
 }
+
+#[test]
+fn const2_i_f() {
+    unsafe {
+        assert_eq!(ffi::const2IF(1, 2.0), 2.0);
+        assert_eq!(ffi::const2IF(2, 1.0), 1.0);
+    }
+}

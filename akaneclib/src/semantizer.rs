@@ -1,4 +1,7 @@
-use std::rc::Rc;
+use std::{
+    cell::RefCell,
+    rc::Rc,
+};
 use anyhow::{
     Error,
     Result,
@@ -126,12 +129,18 @@ fn visit_fn_def(ctx: &mut SemantizerContext, fn_def_ast: &FnDefAst) -> Result<Rc
 
 fn visit_ty(ctx: &mut SemantizerContext, ty_ast: &TyAst) -> Result<Rc<Ty>, Vec<Error>> {
     Ok(match &ty_ast.ty_enum {
-        TyEnum::Arrow(arrow) =>
-            Rc::new(Ty::Arrow(visit_arrow(ctx, arrow)?)),
-        TyEnum::TVar(tvar) =>
-            Rc::new(Ty::TVar(visit_tvar(ctx, tvar)?)),
-        TyEnum::Base(base) =>
-            Rc::new(Ty::Base(visit_base(ctx, base)?)),
+        TyEnum::Arrow(arrow) => {
+            let arrow = visit_arrow(ctx, arrow)?;
+            Ty::new_or_get_with_arrow(ctx, arrow)
+        },
+        TyEnum::TVar(tvar) => {
+            let tvar = visit_tvar(ctx, tvar)?;
+            Ty::new_or_get_with_tvar(ctx, tvar)
+        },
+        TyEnum::Base(base) => {
+            let base = visit_base(ctx, base)?;
+            Ty::new_or_get_with_base(ctx, base)
+        },
     })
 }
 
@@ -160,13 +169,13 @@ fn visit_base(ctx: &mut SemantizerContext, base_ast: &BaseAst) -> Result<Rc<Base
 fn visit_expr(ctx: &mut SemantizerContext, expr_ast: &ExprAst) -> Result<Rc<Expr>, Vec<Error>> {
     Ok(match &expr_ast.expr_enum {
         ExprEnum::App(app_ast) =>
-            Rc::new(Expr::App(visit_app(ctx, app_ast)?)),
+            Expr::new_with_app(visit_app(ctx, app_ast)?),
         ExprEnum::Var(var_ast) =>
-            Rc::new(Expr::Var(visit_var(ctx, var_ast)?)),
+            Expr::new_with_var(visit_var(ctx, var_ast)?),
         ExprEnum::IntNum(int_num_ast) =>
-            Rc::new(Expr::Cn(visit_int_num(ctx, int_num_ast)?)),
+            Expr::new_with_cn(visit_int_num(ctx, int_num_ast)?),
         ExprEnum::RealNum(real_num_ast) =>
-            Rc::new(Expr::Cn(visit_real_num(ctx, real_num_ast)?)),
+            Expr::new_with_cn(visit_real_num(ctx, real_num_ast)?),
     })
 }
 
@@ -185,8 +194,8 @@ fn visit_app(ctx: &mut SemantizerContext, app_ast: &AppAst) -> Result<Rc<App>, V
                 _ => bail_ast_with_line!(errs, app_ast, "Non variable function not supported yet: {}"),
             }
         }
+        args.reverse();
     }
-    args.reverse();
     let fn_expr = visit_expr(ctx, &app_ast.fn_expr)?;
     if let Expr::Var(var) = fn_expr.as_ref() {
         if var.is_arg() {
@@ -196,22 +205,27 @@ fn visit_app(ctx: &mut SemantizerContext, app_ast: &AppAst) -> Result<Rc<App>, V
         let abs = abs.as_ref().unwrap();
         let mut fn_ty = abs.ty.borrow().clone();
         let in_tys = args.iter().map(|arg| arg.ty().borrow().clone()).collect::<Vec<_>>();
-        let mut ty_env_store = abs.ty_env_store.borrow_mut();
-        let ty_env = ty_env_store.new_ty_env();
-        let mut ty_env_ref = ty_env.borrow_mut();
-        for in_ty in in_tys {
-            fn_ty = try_with_errors!(ty_env_ref.apply_tys(ctx, fn_ty, in_ty.clone()), app_ast, errs);
+        let ty_env = Rc::new(RefCell::new(abs.ty_env.borrow().clone()));
+        {
+            let mut ty_env_ref = ty_env.borrow_mut();
+            for in_ty in in_tys {
+                fn_ty = try_with_errors!(ty_env_ref.apply_tys(ctx, fn_ty, in_ty.clone()), app_ast, errs);
+            }
         }
-        fn_ty = fn_ty.to_out_ty();
+        if !ty_env.borrow().is_nondeterministic() {
+            abs.add_child_with_ty_env(ctx, ty_env.clone());
+        }
+        let mut ty = ty_env.borrow().apply_env(ctx, fn_expr.ty().borrow().clone());
         let app =
             if args.len() == 0 {
-                App::new_as_unary(ctx, fn_expr.clone(), fn_ty.clone(), ty_env.clone())
+                App::new_as_unary(ctx, fn_expr.clone(), ty, ty_env.clone())
             }
             else {
-                let mut app = App::new(ctx, fn_expr.clone(), args[0].clone(), fn_ty.clone(), ty_env.clone());
+                ty = ty.to_out_ty();
+                let mut app = App::new(ctx, fn_expr.clone(), args[0].clone(), ty.clone(), ty_env.clone());
                 for arg in &args[1..] {
-                    fn_ty = fn_ty.to_out_ty();
-                    app = App::new(ctx, Rc::new(Expr::App(app)), arg.clone(), fn_ty.clone(), ty_env.clone());
+                    ty = ty.to_out_ty();
+                    app = App::new(ctx, Expr::new_with_app(app), arg.clone(), ty.clone(), ty_env.clone());
                 }
                 app
             };

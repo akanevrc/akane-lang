@@ -14,7 +14,16 @@ pub struct Abs {
     pub args: Vec<Rc<Var>>,
     pub expr: Rc<Expr>,
     pub ty: Rc<RefCell<Rc<Ty>>>,
-    pub ty_env_store: Rc<RefCell<TyEnvStore>>,
+    pub ty_env: Rc<RefCell<TyEnv>>,
+    pub children: Rc<RefCell<Vec<Rc<ChildAbs>>>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ChildAbs {
+    pub args: Vec<Rc<Var>>,
+    pub expr: Rc<Expr>,
+    pub ty: Rc<RefCell<Rc<Ty>>>,
+    pub ty_env: Rc<RefCell<TyEnv>>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -41,13 +50,14 @@ impl Abs {
         let ty = Ty::new_or_get_as_fn_ty(ctx, in_tys, out_ty);
         let tvars = ty.get_tvars();
         let tvars = tvars.into_iter().map(|tvar| tvar.to_key()).collect();
-        let ty_env_store = TyEnvStore::new(tvars);
+        let ty_env = TyEnv::new(tvars);
         let val = Rc::new(Self {
             id,
             args: args.clone(),
             expr: expr.clone(),
             ty: Rc::new(RefCell::new(ty)),
-            ty_env_store,
+            ty_env,
+            children: Rc::new(RefCell::new(Vec::new())),
         });
         var.abs.replace(Some(val.clone()));
         ctx.abs_store.insert(id, val).unwrap()
@@ -55,6 +65,22 @@ impl Abs {
 
     pub fn ret_ty(&self) -> Rc<RefCell<Rc<Ty>>> {
         self.expr.ty()
+    }
+
+    pub fn add_child_with_ty_env(&self, ctx: &mut SemantizerContext, ty_env: Rc<RefCell<TyEnv>>) {
+        if self.children.borrow().iter().any(|child| child.ty_env == ty_env) {
+            return;
+        }
+        let args = self.args.iter().map(|arg| arg.clone_arg_with_ty_env(ctx, ty_env.clone())).collect();
+        let expr = self.expr.clone_with_ty_env(ctx, ty_env.clone());
+        let ty = ty_env.borrow().apply_env(ctx, self.ty.borrow().clone());
+        let child = Rc::new(ChildAbs {
+            args,
+            expr,
+            ty: Rc::new(RefCell::new(ty)),
+            ty_env,
+        });
+        self.children.borrow_mut().push(child);
     }
 }
 

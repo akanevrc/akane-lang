@@ -24,31 +24,29 @@ pub fn generate(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext) ->
         .filter(|var| var.abs.borrow().is_some())
         .map(|var| (var.clone(), var.abs.borrow().clone().unwrap()))
         .collect::<Vec<_>>();
-    for (_, abs) in var_abs.iter() {
-        let mut ty_env_store = abs.ty_env_store.borrow_mut();
-        ty_env_store.distinct();
-    }
+    // for (_, abs) in var_abs.iter().rev() {
+    //     let mut ty_env_store = abs.ty_env_store.borrow_mut();
+    //     ty_env_store.concrete(sem_ctx)?;
+    // }
     for (var, abs) in var_abs {
-        let ty_env_store = abs.ty_env_store.borrow();
-        if ty_env_store.is_generic() {
-            for ty_env in ty_env_store.iter() {
-                generate_fn(cg_ctx, sem_ctx, var.clone(), abs.clone(), ty_env.clone())?;
-            }
+        if abs.children.borrow().is_empty() {
+            generate_fn(cg_ctx, sem_ctx, var, abs.clone())?;
         }
         else {
-            let ty_env = TyEnv::new_empty();
-            generate_fn(cg_ctx, sem_ctx, var, abs.clone(), ty_env)?;
+            for child in abs.children.borrow().iter() {
+                generate_generic_fn(cg_ctx, sem_ctx, var.clone(), child.clone())?;
+            }
         }
     }
     Ok(())
 }
 
-fn generate_fn(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext, var: Rc<Var>, abs: Rc<Abs>, ty_env: Rc<RefCell<TyEnv>>) -> Result<()> {
-    let ty_env_ref = ty_env.borrow();
+fn generate_fn(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext, var: Rc<Var>, abs: Rc<Abs>) -> Result<()> {
+    let ty_env_ref = abs.ty_env.borrow();
     if ty_env_ref.is_unknown() {
         return Ok(());
     }
-    else if ty_env_ref.is_nondterministic() {
+    else if ty_env_ref.is_nondeterministic() {
         bail!("Nondeterministic types is not supported yet");
     }
     let arg_tys =
@@ -57,12 +55,12 @@ fn generate_fn(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext, var
         .collect::<Vec<_>>();
     let arg_types = arg_tys.iter().map(|ty| llvm::get_type_from_ty(cg_ctx, sem_ctx, ty.clone())).collect::<Result<Vec<_>>>()?;
     let arg_basic_types = arg_types.iter().map(|t| t.clone().try_into().map_err(|_| anyhow!("Not a basic metadata type"))).collect::<Result<Vec<_>>>()?;
-    let ret_ty = ty_env_ref.apply_env(sem_ctx, abs.expr.ty().borrow().clone());
+    let ret_ty = abs.expr.applied_ty(sem_ctx).borrow().clone();
+    let ret_ty = ty_env_ref.apply_env(sem_ctx, ret_ty);
     let ret_type = llvm::get_type_from_ty(cg_ctx, sem_ctx, ret_ty)?;
     let ret_basic_type = ret_type.try_into().map_err(|_| anyhow!("Not a basic metadata type"))?;
     let function_type = llvm::get_function_type(cg_ctx, &arg_basic_types, ret_basic_type)?;
     let function_name = ty_env_ref.get_generic_name(&var.logical_name());
-    eprintln!("{}", function_name);
     let function = llvm::add_function(cg_ctx, &function_name, function_type)?;
     cg_ctx.bound_values.insert(function_name.clone(), function.into()).unwrap();
     cg_ctx.functions.insert(function_name, function).unwrap();
@@ -72,8 +70,40 @@ fn generate_fn(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext, var
         let argument_name = ty_env_ref.get_generic_name(&abs.args[i].logical_name());
         cg_ctx.bound_values.insert(argument_name, param.into()).unwrap();
     }
-    cg_ctx.ty_env_stack.push(ty_env.clone());
+    cg_ctx.ty_env_stack.push(abs.ty_env.clone());
     llvm::build_function(cg_ctx, function, |cg_ctx, _| generate_expr(cg_ctx, sem_ctx, abs.expr.clone(), TyEnv::new_empty()))?;
+    cg_ctx.ty_env_stack.pop();
+    Ok(())
+}
+
+fn generate_generic_fn(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext, var: Rc<Var>, child: Rc<ChildAbs>) -> Result<()> {
+    let ty_env_ref = child.ty_env.borrow();
+    if ty_env_ref.is_nondeterministic() {
+        return Ok(());
+    }
+    let arg_tys =
+        child.args.iter()
+        .map(|arg| ty_env_ref.apply_env(sem_ctx, arg.ty.borrow().clone()))
+        .collect::<Vec<_>>();
+    let arg_types = arg_tys.iter().map(|ty| llvm::get_type_from_ty(cg_ctx, sem_ctx, ty.clone())).collect::<Result<Vec<_>>>()?;
+    let arg_basic_types = arg_types.iter().map(|t| t.clone().try_into().map_err(|_| anyhow!("Not a basic metadata type"))).collect::<Result<Vec<_>>>()?;
+    let ret_ty = child.expr.applied_ty(sem_ctx).borrow().clone();
+    let ret_ty = ty_env_ref.apply_env(sem_ctx, ret_ty);
+    let ret_type = llvm::get_type_from_ty(cg_ctx, sem_ctx, ret_ty)?;
+    let ret_basic_type = ret_type.try_into().map_err(|_| anyhow!("Not a basic metadata type"))?;
+    let function_type = llvm::get_function_type(cg_ctx, &arg_basic_types, ret_basic_type)?;
+    let function_name = ty_env_ref.get_generic_name(&var.logical_name());
+    let function = llvm::add_function(cg_ctx, &function_name, function_type)?;
+    cg_ctx.bound_values.insert(function_name.clone(), function.into()).unwrap();
+    cg_ctx.functions.insert(function_name, function).unwrap();
+    let arg_names = child.args.iter().map(|arg| &arg.name[..]).collect::<Vec<_>>();
+    let params = llvm::set_param_names(cg_ctx, function, &arg_names)?;
+    for (i, param) in params.into_iter().enumerate() {
+        let argument_name = ty_env_ref.get_generic_name(&child.args[i].logical_name());
+        cg_ctx.bound_values.insert(argument_name, param.into()).unwrap();
+    }
+    cg_ctx.ty_env_stack.push(child.ty_env.clone());
+    llvm::build_function(cg_ctx, function, |cg_ctx, _| generate_expr(cg_ctx, sem_ctx, child.expr.clone(), TyEnv::new_empty()))?;
     cg_ctx.ty_env_stack.pop();
     Ok(())
 }

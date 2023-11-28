@@ -48,3 +48,12 @@ fn divF x y = x / y;
 
 ty F64 -> F64 -> F64 -> F64 -> F64
 fn addMulF x y z w = x * y + z * w;
+
+ty a -> b -> a
+fn const x y = x;
+
+ty a -> b -> b
+fn const2 x y = const y x;
+
+ty I64 -> F64 -> F64
+fn const2IF x y = const2 x y;

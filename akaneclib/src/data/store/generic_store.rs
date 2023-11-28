@@ -83,13 +83,13 @@ where
     }
 }
 
-impl<Key> GenericStore<Key, Rc<RefCell<TyEnvStore>>>
-where
-    Key: Clone + Eq + Hash + Construct,
-{
-    pub fn insert_new_ty_env_store(&mut self, key: Key, tvars: Vec<TVarKey>) -> Result<Rc<RefCell<TyEnvStore>>> {
-        let ty_env_store = TyEnvStore::new(tvars);
-        self.insert(key, ty_env_store.clone())?;
-        Ok(ty_env_store)
-    }
-}
+// impl<Key> GenericStore<Key, Rc<RefCell<TyEnvStore>>>
+// where
+//     Key: Clone + Eq + Hash + Construct,
+// {
+//     pub fn insert_new_ty_env_store(&mut self, key: Key, tvars: Vec<TVarKey>) -> Result<Rc<RefCell<TyEnvStore>>> {
+//         let ty_env_store = TyEnvStore::new(tvars);
+//         self.insert(key, ty_env_store.clone())?;
+//         Ok(ty_env_store)
+//     }
+// }

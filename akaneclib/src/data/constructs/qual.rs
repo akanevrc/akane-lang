@@ -60,6 +60,15 @@ impl Qual {
         }
         Self::new_or_get_one(ctx, key.scopes.clone())
     }
+
+    pub fn find_scope<T>(&self, pred: impl Fn(&Scope) -> Option<T>) -> Option<T> {
+        for scope in self.scopes.iter().rev() {
+            if let Some(t) = pred(scope) {
+                return Some(t);
+            }
+        }
+        None
+    }
 }
 
 impl QualKey {

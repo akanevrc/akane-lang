@@ -21,4 +21,5 @@ extern "C" {
     pub fn mulF(x: c_double, y: c_double) -> c_double;
     pub fn divF(x: c_double, y: c_double) -> c_double;
     pub fn addMulF(x: c_double, y: c_double, z: c_double, w: c_double) -> c_double;
+    pub fn const2IF(x: c_longlong, y: c_double) -> c_double;
 }

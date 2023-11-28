@@ -46,7 +46,7 @@ fn init_op(ctx: &mut SemantizerContext, name: String) {
         else {
             unreachable!()
         };
-    let ty_env = TyEnv::new(&vec![tvar]);
+    let ty_env = TyEnv::new(vec![tvar]);
     let expr = Rc::new(Expr::App(App::new(ctx, Rc::new(Expr::Var(inner_var.clone())), Rc::new(Expr::Var(x.clone())), a_fn_ty, ty_env.clone())));
     let expr = Rc::new(Expr::App(App::new(ctx, expr, Rc::new(Expr::Var(y.clone())), a_ty, ty_env)));
     Abs::new_as_var_with_id(ctx, id, vec![x, y], expr, var);
