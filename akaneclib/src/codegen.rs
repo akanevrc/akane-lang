@@ -24,10 +24,6 @@ pub fn generate(cg_ctx: &mut CodeGenContext, sem_ctx: &mut SemantizerContext) ->
         .filter(|var| var.abs.borrow().is_some())
         .map(|var| (var.clone(), var.abs.borrow().clone().unwrap()))
         .collect::<Vec<_>>();
-    // for (_, abs) in var_abs.iter().rev() {
-    //     let mut ty_env_store = abs.ty_env_store.borrow_mut();
-    //     ty_env_store.concrete(sem_ctx)?;
-    // }
     for (var, abs) in var_abs {
         if abs.children.borrow().is_empty() {
             generate_fn(cg_ctx, sem_ctx, var, abs.clone())?;
